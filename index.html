@@ -183,7 +183,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Sarabun',sans-serif;backgroun
 .traffic-sign{width:120px;height:120px;position:relative}
 .modal-badge{text-align:center;margin-bottom:8px}
 .modal-badge span{display:inline-block;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px}
-.modal-badge .gps{background:var(--gn2);color:var(--gn3)}
+.modal-badge .gps slide{background:var(--gn2);color:var(--gn3)}
 .modal-badge .manual{background:var(--bl2);color:var(--bl3)}
 .modal-title{font-size:17px;font-weight:700;text-align:center;margin-bottom:6px;color:var(--dk);line-height:1.3}
 .modal-desc{font-size:12px;color:var(--gr);text-align:center;line-height:1.6;margin-bottom:12px}
@@ -664,7 +664,7 @@ function getTrafficSignSmall(type,w,h) {
 var customSignTypes = {};
 function loadCustomSignTypes() {
   try {
-    var d = localStorage.getItem('kspCustomSigns');
+    var d = getStorageItem('kspCustomSigns');
     if (d) {
       customSignTypes = JSON.parse(d);
       var container = document.getElementById('customOptGroup');
@@ -689,7 +689,7 @@ function saveNewSignType() {
   
   var rawId = "cst_" + Date.now();
   customSignTypes[rawId] = { label: label, code: "Custom" };
-  localStorage.setItem('kspCustomSigns', JSON.stringify(customSignTypes));
+  setStorageItem('kspCustomSigns', JSON.stringify(customSignTypes));
   
   loadCustomSignTypes();
   renderSignUploadGrid();
@@ -741,243 +741,13 @@ var cloudDriver = "คนขับรถบรรทุก KSP";
 var cloudAutoSync = 0;
 var cloudTimer = null;
 
-var audioCtx = null;
-function initAudio() { 
-  if (!audioCtx) {
-    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) { console.error(e); }
-  } 
+// 🛠️ ระบบป้องกัน LINE Browser บล็อก LocalStorage (Memory Fallback Engine)
+var memoryCache = {};
+function getStorageItem(key) {
+  try { return localStorage.getItem(key); } 
+  catch (e) { return memoryCache[key] || null; }
 }
-function playBeep(freq, type, duration) {
-  if (!sndOn) return; initAudio(); if (!audioCtx) return;
-  try {
-    var osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
-    osc.type = type || 'sine'; osc.frequency.value = freq || 440;
-    gain.gain.setValueAtTime(vol, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duration);
-    osc.connect(gain); gain.connect(audioCtx.destination);
-    osc.start(); osc.stop(audioCtx.currentTime + duration);
-  } catch(e){}
+function setStorageItem(key, val) {
+  try { localStorage.setItem(key, val); } 
+  catch (e) { memoryCache[key] = String(val); }
 }
-function triggerVibrate(pattern) { if (navigator.vibrate && document.getElementById('vibCk') && document.getElementById('vibCk').checked) navigator.vibrate(pattern); }
-
-function loadAllData() {
-  try {
-    var r = localStorage.getItem('kspRoutes'), c = localStorage.getItem('kspCps'), h = localStorage.getItem('kspHist'), p = localStorage.getItem('kspPin'), cl = localStorage.getItem('kspCloud');
-    routes = r ? JSON.parse(r) : defaultRoutes;
-    checkpoints = c ? JSON.parse(c) : defaultCheckpoints;
-    historyLogs = h ? JSON.parse(h) : [];
-    if (p) adminPin = p;
-    if (cl) {
-      var co = JSON.parse(cl); cloudUrl = co.url||""; cloudDriver = co.driver||"คนขับรถบรรทุก KSP"; cloudAutoSync = +co.autoSync||0;
-      if(document.getElementById('cloudUrl')) document.getElementById('cloudUrl').value = cloudUrl; 
-      if(document.getElementById('cloudDriver')) document.getElementById('cloudDriver').value = cloudDriver; 
-      if(document.getElementById('cloudAutoSync')) document.getElementById('cloudAutoSync').value = cloudAutoSync;
-      if (cloudUrl && document.getElementById('cloudStatus')) document.getElementById('cloudStatus').innerHTML = "🔗 เชื่อมต่อผู้ขับ: <b>" + cloudDriver + "</b>";
-    }
-    var cur = localStorage.getItem('kspCurrentRouteId');
-    if (cur) currentRouteId = cur; else if (routes && routes.length > 0) currentRouteId = routes[0].id;
-    loadSignImages();
-  } catch(e) {
-    routes = defaultRoutes; checkpoints = defaultCheckpoints; historyLogs = [];
-  }
-}
-function saveRoutesData() { localStorage.setItem('kspRoutes', JSON.stringify(routes)); }
-function saveCpsData() { localStorage.setItem('kspCps', JSON.stringify(checkpoints)); }
-function saveHistData() { localStorage.setItem('kspHist', JSON.stringify(historyLogs)); }
-
-// ===== LEAFLET HANDLING MAP =====
-var lMap = null, truckMarker = null, myLocDotMarker = null, mapCMarkers = [];
-function initLeafletMap() {
-  if (lMap) return;
-  lMap = L.map('leafmap', { zoomControl: false, attributionControl: false }).setView([17.20, 102.85], 10);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(lMap);
-  renderMapElements();
-}
-function centerMap() {
-  if (isPreviewMode && previewRoutePoints[previewCurrentPointIdx]) {
-    lMap.panTo(previewRoutePoints[previewCurrentPointIdx]);
-  } else if (myLat && myLng) {
-    lMap.setView([myLat, myLng], 15);
-  } else {
-    var activeCps = checkpoints.filter(function(c){return c.routeId === currentRouteId;});
-    if (activeCps.length > 0) {
-      var group = L.featureGroup(activeCps.map(function(c){return L.marker([c.lat, c.lng]);}));
-      lMap.fitBounds(group.getBounds().pad(0.1));
-    }
-  }
-}
-function renderMapElements() {
-  if (!lMap) return;
-  mapCMarkers.forEach(function(m){lMap.removeLayer(m);}); mapCMarkers = [];
-  if (truckMarker) { lMap.removeLayer(truckMarker); truckMarker = null; }
-  if (myLocDotMarker) { lMap.removeLayer(myLocDotMarker); myLocDotMarker = null; }
-
-  var activeCps = checkpoints.filter(function(c){return c.routeId === currentRouteId;});
-  var pathCoords = [];
-
-  activeCps.sort(function(a,b){return parseFloat(a.km)-parseFloat(b.km);}).forEach(function(cp) {
-    pathCoords.push([cp.lat, cp.lng]);
-    var mClass = "cp-marker " + (cp.type || "warn");
-    if (passedCheckpoints[cp.id]) mClass += " passed";
-    else if (lastActiveAlertCpId === cp.id) mClass += " alert-ring";
-
-    var iconHtml = '<div class="' + mClass + '">' + (cp.emoji || "⚠️") + '</div>';
-    var cMark = L.marker([cp.lat, cp.lng], {
-      icon: L.divIcon({ className: '', html: iconHtml, iconSize: [30, 30], iconAnchor: [15, 15] })
-    }).addTo(lMap);
-    
-    cMark.bindPopup("<b>" + cp.name + "</b><br>ระยะทาง: " + cp.km);
-    mapCMarkers.push(cMark);
-  });
-
-  if (pathCoords.length > 1) {
-    var rColor = "#BA7517";
-    var currentRoute = routes.find(function(r){return r.id === currentRouteId;});
-    if (currentRoute && currentRoute.color) rColor = currentRoute.color;
-    var poly = L.polyline(pathCoords, { color: rColor, weight: 5, opacity: 0.75 }).addTo(lMap);
-    mapCMarkers.push(poly);
-  }
-
-  var startPos = pathCoords[0] || [17.4068, 102.7996];
-  var truckIcon = L.divIcon({
-    className: '',
-    html: '<div class="truck-pulse" id="mapTruckEl"><span class="truck-marker">🚛</span></div>',
-    iconSize: [44, 44], iconAnchor: [22, 22]
-  });
-  truckMarker = L.marker(startPos, { icon: truckIcon }).addTo(lMap);
-  myLocDotMarker = L.marker(startPos, {
-    icon: L.divIcon({ className: '', html: '<div class="my-loc-dot"></div>', iconSize: [14, 14], iconAnchor: [7, 7] })
-  }).addTo(lMap);
-}
-
-function updateTruckMarkerPosition(lat, lng, heading, speed) {
-  if (!truckMarker || !myLocDotMarker) return;
-  truckMarker.setLatLng([lat, lng]);
-  myLocDotMarker.setLatLng([lat, lng]);
-  var tEl = document.querySelector('#mapTruckEl .truck-marker');
-  if (tEl) {
-    var correctRotation = (heading || 0) - 90;
-    tEl.style.transform = 'rotate(' + correctRotation + 'deg)';
-  }
-}
-
-// ===== REAL GPS HANDLING SYSTEM =====
-function requestGPS() {
-  if (!navigator.geolocation) { showToast("❌ อุปกรณ์ไม่รองรับ GPS"); return; }
-  showToast("📡 กำลังเรียกข้อมูลพิกัดดาวเทียม...");
-  if (watchId) navigator.geolocation.clearWatch(watchId);
-  watchId = navigator.geolocation.watchPosition(onGpsSuccess, onGpsError, {
-    enableHighAccuracy: true, timeout: 10000, maximumAge: 0
-  });
-}
-function onGpsSuccess(pos) {
-  myLat = pos.coords.latitude; myLng = pos.coords.longitude;
-  mySpeed = pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : 0;
-  myHeading = pos.coords.heading || 0;
-  
-  var dot = document.getElementById('gpsDot'), lbl = document.getElementById('gpsLbl');
-  if(dot) dot.className = "gps-dot on"; 
-  if(lbl) lbl.textContent = "GPS ล็อก";
-  if(document.getElementById('gpsPrompt')) document.getElementById('gpsPrompt').classList.remove('show');
-
-  if(document.getElementById('tripSpd')) document.getElementById('tripSpd').textContent = mySpeed + " กม/ชม";
-  if(document.getElementById('mapSpd')) document.getElementById('mapSpd').textContent = mySpeed;
-
-  if (isTripActive && !isPreviewMode) {
-    updateTruckMarkerPosition(myLat, myLng, myHeading, mySpeed);
-    checkProximityAlerts(myLat, myLng, mySpeed);
-  }
-}
-function onGpsError(err) {
-  var dot = document.getElementById('gpsDot'), lbl = document.getElementById('gpsLbl');
-  if(dot) dot.className = "gps-dot err"; 
-  if(lbl) lbl.textContent = "GPS หลุด";
-  if (err.code === 1) showToast("❌ กรุณาอนุญาตสิทธิ์เข้าถึง GPS");
-}
-
-function getDistanceMeters(lat1, lon1, lat2, lon2) {
-  var R = 6371e3;
-  var phi1 = lat1 * Math.PI/180, phi2 = lat2 * Math.PI/180;
-  var dPhi = (lat2-lat1) * Math.PI/180, dLambda = (lon2-lon1) * Math.PI/180;
-  var a = Math.sin(dPhi/2) * Math.sin(dPhi/2) + Math.cos(phi1) * Math.cos(phi2) * Math.sin(dLambda/2) * Math.sin(dLambda/2);
-  return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
-}
-
-// ===== PROXIMITY ALERT RADAR =====
-function checkProximityAlerts(lat, lng, speedCurrent) {
-  var activeCps = checkpoints.filter(function(c){return c.routeId === currentRouteId;});
-  var nearestCp = null, minDist = Infinity;
-
-  activeCps.forEach(function(cp) {
-    var dist = getDistanceMeters(lat, lng, cp.lat, cp.lng);
-    if (dist < minDist) { minDist = dist; nearestCp = cp; }
-
-    if (!passedCheckpoints[cp.id] && dist <= 45) {
-      passedCheckpoints[cp.id] = new Date().toLocaleTimeString();
-      playBeep(880, 'triangle', 0.45); triggerVibrate([100, 50, 100]);
-      showToast("✅ ผ่านจุด: " + cp.name);
-      renderCheckpointLists(); renderMapElements();
-    }
-  });
-
-  var mapNearEl = document.getElementById('mapNear');
-  if (mapNearEl) {
-    if (nearestCp) {
-      var dTxt = minDist > 1000 ? (minDist/1000).toFixed(1) + "กม." : Math.round(minDist) + "ม.";
-      mapNearEl.textContent = nearestCp.emoji + " " + nearestCp.name + " (" + dTxt + ")";
-    } else { mapNearEl.textContent = "--"; }
-  }
-
-  if (nearestCp && nearestCp.alert && minDist <= alertR && !passedCheckpoints[nearestCp.id]) {
-    if (lastActiveAlertCpId !== nearestCp.id) {
-      lastActiveAlertCpId = nearestCp.id;
-      triggerDangerVisualAlert(nearestCp, minDist);
-    } else {
-      var pbDistEl = document.getElementById('pbDist');
-      if (pbDistEl) pbDistEl.textContent = "ระยะห่าง: " + Math.round(minDist) + " เมตร";
-    }
-  } else if (nearestCp && minDist > alertR && lastActiveAlertCpId === nearestCp.id) {
-    lastActiveAlertCpId = null;
-    if(document.getElementById('proxBanner')) document.getElementById('proxBanner').classList.remove('show');
-    renderMapElements();
-  }
-}
-function triggerDangerVisualAlert(cp, distance) {
-  playBeep(587.33, 'sawtooth', 0.25); setTimeout(function(){playBeep(587.33,'sawtooth',0.25);}, 300);
-  triggerVibrate([400, 200, 400, 200, 400]);
-
-  renderMapElements();
-
-  var pb = document.getElementById('proxBanner'), pbe = document.getElementById('pbEmoji'), pbt = document.getElementById('pbText'), pbd = document.getElementById('pbDist');
-  if(pb) {
-    pb.className = "prox-banner show " + (cp.type === 'community'?'warn':'');
-    if(pbe) pbe.textContent = cp.emoji||"⚠️"; 
-    if(pbt) pbt.textContent = cp.name; 
-    if(pbd) pbd.textContent = "ระยะห่าง: " + Math.round(distance) + " เมตร";
-  }
-
-  if (!autoAlert) return;
-
-  if(document.getElementById('trafficSign')) document.getElementById('trafficSign').innerHTML = getTrafficSign(cp.type);
-  var badgeWrap = document.getElementById('mBadge');
-  if(badgeWrap) badgeWrap.innerHTML = isPreviewMode ? '<span class="manual">👁️ PREVIEW MODE</span>' : '<span class="gps">📡 LIVE GPS</span>';
-  
-  if(document.getElementById('mTitle')) document.getElementById('mTitle').textContent = cp.title || "แจ้งเตือนจุดเสี่ยง!";
-  if(document.getElementById('mDesc')) document.getElementById('mDesc').textContent = cp.desc || cp.name;
-
-  var rulesWrap = document.getElementById('mRules'); 
-  if(rulesWrap) {
-    rulesWrap.innerHTML = "";
-    if (cp.rules && cp.rules.length > 0) {
-      cp.rules.forEach(function(r){
-        var rDiv = document.createElement('div'); rDiv.className = "modal-rule";
-        rDiv.innerHTML = "<span>🛑</span><span>" + r + "</span>"; rulesWrap.appendChild(rDiv);
-      });
-      rulesWrap.style.display = "block";
-    } else { rulesWrap.style.display = "none"; }
-  }
-
-  if(document.getElementById('alertModal')) document.getElementById('alertModal').style.display = "flex";
-
-  if (ttsOn && cp.speak) {
-    var mSpeak = document.getElementById('mSpeak'), mSpeakTxt = document.getElementById('mSpeak
