@@ -1531,13 +1531,11 @@ function setupCloudIntervalTimer() {
 }
 function cloudPush() {
   var url = getCloudUrl();
-  if(!url) { showToast('❌ ยังไม่ได้ตั้งค่า URL'); openCloudConfig && openCloudConfig(); return; }
-  var cps = [];
-  try { var d=localStorage.getItem('kspCPS'); if(d) cps=JSON.parse(d); } catch(e){}
-  if(!cps.length) { showToast('⚠️ ไม่มีข้อมูลจุดอันตรายที่จะอัปโหลด'); return; }
+  if(!url) { showToast('❌ ยังไม่ได้ตั้งค่า URL'); openCloudConfig(); return; }
+  if(!checkpoints.length) { showToast('⚠️ ไม่มีข้อมูลจุดอันตรายที่จะอัปโหลด'); return; }
   var pBtn=document.getElementById('cloudPushBtn');
   if(pBtn){pBtn.textContent='⏳...';pBtn.disabled=true;}
-  syncPushCheckpoints(cps, currentRouteId||'R01', function(ok){
+  syncPushCheckpoints(checkpoints, currentRouteId||'R01', function(ok){
     if(pBtn){pBtn.textContent='📤 อัปโหลด';pBtn.disabled=false;}
   });
 }
@@ -1549,18 +1547,31 @@ function cloudPull() {
     if(pBtn){pBtn.textContent='📥 ดึงข้อมูล';pBtn.disabled=false;}
     if(!data) return;
     if(data.length===0){showToast('⚠️ ไม่พบข้อมูลใน Cloud สำหรับเส้นทางนี้');return;}
-    // Save to localStorage and update UI
-    localStorage.setItem('kspCPS', JSON.stringify(data));
-    // Reload if renderCheckpoints exists
-    if(typeof renderCheckpoints==='function') renderCheckpoints();
-    if(typeof renderCPs==='function') renderCPs();
-    if(typeof rebuildMapLayers==='function') rebuildMapLayers();
-    if(typeof renderAdminList==='function') renderAdminList();
+    
+    // บันทึกลงตัวแปรหลักและถังหน่วยความจำถาวรให้เป็นชื่อเดียวกันทั้งหมด
+    checkpoints = data; 
+    saveCpsData();
+    
+    // สั่งวาด UI ทุกหน้าจอที่เชื่อมโยงกับจุดตรวจสอบใหม่ทันที
+    renderCheckpointLists();
+    if(lMap) renderMapElements();
+    
     showToast('✅ โหลด '+data.length+' จุดจาก Cloud สำเร็จ');
   });
 }
 
-function cloudPullRoutes() { cloudPull(); }
+function cloudPullRoutes() { 
+  var pBtn=document.getElementById('cloudPullBtn');
+  if(pBtn){pBtn.textContent='⏳...';pBtn.disabled=true;}
+  syncPullRoutes(function(data){
+    if(pBtn){pBtn.textContent='📥 ดึงข้อมูล';pBtn.disabled=false;}
+    if(data && data.length > 0) {
+      renderRouteLists();
+      showToast('✅ อัปเดตรายการเส้นทางสำเร็จ');
+    }
+  });
+}
+
 function cloudTest() {
   if (!document.getElementById('cloudUrl').value.trim()) { alert("โปรดกรอกลิงก์สคริปต์ก่อนทดสอบ"); return; }
   showToast("🔌 กำลัง Ping ทดสอบ...");
@@ -1767,6 +1778,7 @@ function syncPullRoutes(onDone) {
   .then(function(d){
     if(d.ok && d.data) {
       localStorage.setItem('kspRoutes', JSON.stringify(d.data));
+      routes = d.data; // อัปเดตตัวแปรหลัก
       showToast('✅ ดึงเส้นทาง ' + d.data.length + ' เส้น');
       if(onDone) onDone(d.data);
     } else {
