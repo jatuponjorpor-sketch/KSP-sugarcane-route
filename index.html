@@ -751,3 +751,828 @@ function setStorageItem(key, val) {
   try { localStorage.setItem(key, val); } 
   catch (e) { memoryCache[key] = String(val); }
 }
+
+var audioCtx = null;
+function initAudio() { 
+  if (!audioCtx) {
+    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) { console.error(e); }
+  } 
+}
+function playBeep(freq, type, duration) {
+  if (!sndOn) return; initAudio(); if (!audioCtx) return;
+  try {
+    var osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+    osc.type = type || 'sine'; osc.frequency.value = freq || 440;
+    gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duration);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(); osc.stop(audioCtx.currentTime + duration);
+  } catch(e){}
+}
+function triggerVibrate(pattern) { if (navigator.vibrate && document.getElementById('vibCk') && document.getElementById('vibCk').checked) navigator.vibrate(pattern); }
+
+function loadAllData() {
+  try {
+    var r = getStorageItem('kspRoutes'), c = getStorageItem('kspCps'), h = getStorageItem('kspHist'), p = getStorageItem('kspPin'), cl = getStorageItem('kspCloud');
+    routes = r ? JSON.parse(r) : defaultRoutes;
+    checkpoints = c ? JSON.parse(c) : defaultCheckpoints;
+    historyLogs = h ? JSON.parse(h) : [];
+    if (p) adminPin = p;
+    if (cl) {
+      var co = JSON.parse(cl); cloudUrl = co.url||""; cloudDriver = co.driver||"คนขับรถบรรทุก KSP"; cloudAutoSync = +co.autoSync||0;
+      if(document.getElementById('cloudUrl')) document.getElementById('cloudUrl').value = cloudUrl; 
+      if(document.getElementById('cloudDriver')) document.getElementById('cloudDriver').value = cloudDriver; 
+      if(document.getElementById('cloudAutoSync')) document.getElementById('cloudAutoSync').value = cloudAutoSync;
+      if (cloudUrl && document.getElementById('cloudStatus')) document.getElementById('cloudStatus').innerHTML = "🔗 เชื่อมต่อผู้ขับ: <b>" + cloudDriver + "</b>";
+    }
+    var cur = getStorageItem('kspCurrentRouteId');
+    if (cur) currentRouteId = cur; else if (routes && routes.length > 0) currentRouteId = routes[0].id;
+    loadSignImages();
+  } catch(e) {
+    routes = defaultRoutes; checkpoints = defaultCheckpoints; historyLogs = [];
+  }
+}
+function saveRoutesData() { setStorageItem('kspRoutes', JSON.stringify(routes)); }
+function saveCpsData() { setStorageItem('kspCps', JSON.stringify(checkpoints)); }
+function saveHistData() { setStorageItem('kspHist', JSON.stringify(historyLogs)); }
+
+// ===== LEAFLET HANDLING MAP =====
+var lMap = null, truckMarker = null, myLocDotMarker = null, mapCMarkers = [];
+function initLeafletMap() {
+  if (lMap) return;
+  lMap = L.map('leafmap', { zoomControl: false, attributionControl: false }).setView([17.20, 102.85], 10);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(lMap);
+  renderMapElements();
+}
+function centerMap() {
+  if (isPreviewMode && previewRoutePoints[previewCurrentPointIdx]) {
+    lMap.panTo(previewRoutePoints[previewCurrentPointIdx]);
+  } else if (myLat && myLng) {
+    lMap.setView([myLat, myLng], 15);
+  } else {
+    var activeCps = checkpoints.filter(function(c){return c.routeId === currentRouteId;});
+    if (activeCps.length > 0) {
+      var group = L.featureGroup(activeCps.map(function(c){return L.marker([c.lat, c.lng]);}));
+      lMap.fitBounds(group.getBounds().pad(0.1));
+    }
+  }
+}
+function renderMapElements() {
+  if (!lMap) return;
+  mapCMarkers.forEach(function(m){lMap.removeLayer(m);}); mapCMarkers = [];
+  if (truckMarker) { lMap.removeLayer(truckMarker); truckMarker = null; }
+  if (myLocDotMarker) { lMap.removeLayer(myLocDotMarker); myLocDotMarker = null; }
+
+  var activeCps = checkpoints.filter(function(c){return c.routeId === currentRouteId;});
+  var pathCoords = [];
+
+  activeCps.sort(function(a,b){return parseFloat(a.km)-parseFloat(b.km);}).forEach(function(cp) {
+    pathCoords.push([cp.lat, cp.lng]);
+    var mClass = "cp-marker " + (cp.type || "warn");
+    if (passedCheckpoints[cp.id]) mClass += " passed";
+    else if (lastActiveAlertCpId === cp.id) mClass += " alert-ring";
+
+    var iconHtml = '<div class="' + mClass + '">' + (cp.emoji || "⚠️") + '</div>';
+    var cMark = L.marker([cp.lat, cp.lng], {
+      icon: L.divIcon({ className: '', html: iconHtml, iconSize: [30, 30], iconAnchor: [15, 15] })
+    }).addTo(lMap);
+    
+    cMark.bindPopup("<b>" + cp.name + "</b><br>ระยะทาง: " + cp.km);
+    mapCMarkers.push(cMark);
+  });
+
+  if (pathCoords.length > 1) {
+    var rColor = "#BA7517";
+    var currentRoute = routes.find(function(r){return r.id === currentRouteId;});
+    if (currentRoute && currentRoute.color) rColor = currentRoute.color;
+    var poly = L.polyline(pathCoords, { color: rColor, weight: 5, opacity: 0.75 }).addTo(lMap);
+    mapCMarkers.push(poly);
+  }
+
+  var startPos = pathCoords[0] || [17.4068, 102.7996];
+  var truckIcon = L.divIcon({
+    className: '',
+    html: '<div class="truck-pulse" id="mapTruckEl"><span class="truck-marker">🚛</span></div>',
+    iconSize: [44, 44], iconAnchor: [22, 22]
+  });
+  truckMarker = L.marker(startPos, { icon: truckIcon }).addTo(lMap);
+  myLocDotMarker = L.marker(startPos, {
+    icon: L.divIcon({ className: '', html: '<div class="my-loc-dot"></div>', iconSize: [14, 14], iconAnchor: [7, 7] })
+  }).addTo(lMap);
+}
+
+function updateTruckMarkerPosition(lat, lng, heading, speed) {
+  if (!truckMarker || !myLocDotMarker) return;
+  truckMarker.setLatLng([lat, lng]);
+  myLocDotMarker.setLatLng([lat, lng]);
+  var tEl = document.querySelector('#mapTruckEl .truck-marker');
+  if (tEl) {
+    var correctRotation = (heading || 0) - 90;
+    tEl.style.transform = 'rotate(' + correctRotation + 'deg)';
+  }
+}
+
+// ===== REAL GPS HANDLING SYSTEM =====
+function requestGPS() {
+  if (!navigator.geolocation) { showToast("❌ อุปกรณ์ไม่รองรับ GPS"); return; }
+  showToast("📡 กำลังเรียกข้อมูลพิกัดดาวเทียม...");
+  if (watchId) navigator.geolocation.clearWatch(watchId);
+  watchId = navigator.geolocation.watchPosition(onGpsSuccess, onGpsError, {
+    enableHighAccuracy: true, timeout: 10000, maximumAge: 0
+  });
+}
+function onGpsSuccess(pos) {
+  myLat = pos.coords.latitude; myLng = pos.coords.longitude;
+  mySpeed = pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : 0;
+  myHeading = pos.coords.heading || 0;
+  
+  var dot = document.getElementById('gpsDot'), lbl = document.getElementById('gpsLbl');
+  if(dot) dot.className = "gps-dot on"; 
+  if(lbl) lbl.textContent = "GPS ล็อก";
+  if(document.getElementById('gpsPrompt')) document.getElementById('gpsPrompt').classList.remove('show');
+
+  if(document.getElementById('tripSpd')) document.getElementById('tripSpd').textContent = mySpeed + " กม/ชม";
+  if(document.getElementById('mapSpd')) document.getElementById('mapSpd').textContent = mySpeed;
+
+  if (isTripActive && !isPreviewMode) {
+    updateTruckMarkerPosition(myLat, myLng, myHeading, mySpeed);
+    checkProximityAlerts(myLat, myLng, mySpeed);
+  }
+}
+function onGpsError(err) {
+  var dot = document.getElementById('gpsDot'), lbl = document.getElementById('gpsLbl');
+  if(dot) dot.className = "gps-dot err"; 
+  if(lbl) lbl.textContent = "GPS หลุด";
+  if (err.code === 1) showToast("❌ กรุณาอนุญาตสิทธิ์เข้าถึง GPS");
+}
+
+function getDistanceMeters(lat1, lon1, lat2, lon2) {
+  var R = 6371e3;
+  var phi1 = lat1 * Math.PI/180, phi2 = lat2 * Math.PI/180;
+  var dPhi = (lat2-lat1) * Math.PI/180, dLambda = (lon2-lon1) * Math.PI/180;
+  var a = Math.sin(dPhi/2) * Math.sin(dPhi/2) + Math.cos(phi1) * Math.cos(phi2) * Math.sin(dLambda/2) * Math.sin(dLambda/2);
+  return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+}
+
+// ===== PROXIMITY ALERT RADAR =====
+function checkProximityAlerts(lat, lng, speedCurrent) {
+  var activeCps = checkpoints.filter(function(c){return c.routeId === currentRouteId;});
+  var nearestCp = null, minDist = Infinity;
+
+  activeCps.forEach(function(cp) {
+    var dist = getDistanceMeters(lat, lng, cp.lat, cp.lng);
+    if (dist < minDist) { minDist = dist; nearestCp = cp; }
+
+    if (!passedCheckpoints[cp.id] && dist <= 45) {
+      passedCheckpoints[cp.id] = new Date().toLocaleTimeString();
+      playBeep(880, 'triangle', 0.45); triggerVibrate([100, 50, 100]);
+      showToast("✅ ผ่านจุด: " + cp.name);
+      renderCheckpointLists(); renderMapElements();
+    }
+  });
+
+  var mapNearEl = document.getElementById('mapNear');
+  if (mapNearEl) {
+    if (nearestCp) {
+      var dTxt = minDist > 1000 ? (minDist/1000).toFixed(1) + "กม." : Math.round(minDist) + "ม.";
+      mapNearEl.textContent = nearestCp.emoji + " " + nearestCp.name + " (" + dTxt + ")";
+    } else { mapNearEl.textContent = "--"; }
+  }
+
+  if (nearestCp && nearestCp.alert && minDist <= alertR && !passedCheckpoints[nearestCp.id]) {
+    if (lastActiveAlertCpId !== nearestCp.id) {
+      lastActiveAlertCpId = nearestCp.id;
+      triggerDangerVisualAlert(nearestCp, minDist);
+    } else {
+      var pbDistEl = document.getElementById('pbDist');
+      if (pbDistEl) pbDistEl.textContent = "ระยะห่าง: " + Math.round(minDist) + " เมตร";
+    }
+  } else if (nearestCp && minDist > alertR && lastActiveAlertCpId === nearestCp.id) {
+    lastActiveAlertCpId = null;
+    if(document.getElementById('proxBanner')) document.getElementById('proxBanner').classList.remove('show');
+    renderMapElements();
+  }
+}
+function triggerDangerVisualAlert(cp, distance) {
+  playBeep(587.33, 'sawtooth', 0.25); setTimeout(function(){playBeep(587.33,'sawtooth',0.25);}, 300);
+  triggerVibrate([400, 200, 400, 200, 400]);
+
+  renderMapElements();
+
+  var pb = document.getElementById('proxBanner'), pbe = document.getElementById('pbEmoji'), pbt = document.getElementById('pbText'), pbd = document.getElementById('pbDist');
+  if(pb) {
+    pb.className = "prox-banner show " + (cp.type === 'community'?'warn':'');
+    if(pbe) pbe.textContent = cp.emoji||"⚠️"; 
+    if(pbt) pbt.textContent = cp.name; 
+    if(pbd) pbd.textContent = "ระยะห่าง: " + Math.round(distance) + " เมตร";
+  }
+
+  if (!autoAlert) return;
+
+  if(document.getElementById('trafficSign')) document.getElementById('trafficSign').innerHTML = getTrafficSign(cp.type);
+  var badgeWrap = document.getElementById('mBadge');
+  if(badgeWrap) badgeWrap.innerHTML = isPreviewMode ? '<span class="manual">👁️ PREVIEW MODE</span>' : '<span class="gps">📡 LIVE GPS</span>';
+  
+  if(document.getElementById('mTitle')) document.getElementById('mTitle').textContent = cp.title || "แจ้งเตือนจุดเสี่ยง!";
+  if(document.getElementById('mDesc')) document.getElementById('mDesc').textContent = cp.desc || cp.name;
+
+  var rulesWrap = document.getElementById('mRules'); 
+  if(rulesWrap) {
+    rulesWrap.innerHTML = "";
+    if (cp.rules && cp.rules.length > 0) {
+      cp.rules.forEach(function(r){
+        var rDiv = document.createElement('div'); rDiv.className = "modal-rule";
+        rDiv.innerHTML = "<span>🛑</span><span>" + r + "</span>"; rulesWrap.appendChild(rDiv);
+      });
+      rulesWrap.style.display = "block";
+    } else { rulesWrap.style.display = "none"; }
+  }
+
+  if(document.getElementById('alertModal')) document.getElementById('alertModal').style.display = "flex";
+
+  if (ttsOn && cp.speak) {
+    var mSpeak = document.getElementById('mSpeak'), mSpeakTxt = document.getElementById('mSpeakTxt');
+    if(mSpeak) mSpeak.style.display = "flex"; 
+    if(mSpeakTxt) mSpeakTxt.textContent = cp.speak;
+    
+    var durationEst = Math.max(3000, cp.speak.length * 140);
+    if(document.getElementById('autoDismissTxt')) document.getElementById('autoDismissTxt').textContent = "ปิดอัตโนมัติภายใน " + Math.round(durationEst/1000) + " วินาที";
+    
+    window.speakTimer = setTimeout(function(){ closeAlert(); }, durationEst);
+
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      var msg = new SpeechSynthesisUtterance(cp.speak);
+      msg.lang = 'th-TH'; msg.volume = vol; msg.rate = 0.95;
+      window.speechSynthesis.speak(msg);
+    }
+  } else {
+    if(document.getElementById('mSpeak')) document.getElementById('mSpeak').style.display = "none";
+    if(document.getElementById('autoDismissTxt')) document.getElementById('autoDismissTxt').textContent = "กดรับทราบเพื่อดำเนินการต่อ";
+  }
+}
+function closeAlert() {
+  if(document.getElementById('alertModal')) document.getElementById('alertModal').style.display = "none";
+  if (window.speakTimer) clearTimeout(window.speakTimer);
+}
+
+// ===== PREVIEW SIMULATION DRIVER =====
+function startPreview() {
+  if (isPreviewMode) { stopPreview(); return; }
+  var activeCps = checkpoints.filter(function(c){return c.routeId === currentRouteId;}).sort(function(a,b){return parseFloat(a.km)-parseFloat(b.km);});
+  if (activeCps.length < 2) { showToast("❌ เส้นทางนี้ต้องการพิกัดอย่างน้อย 2 จุด"); return; }
+
+  previewRoutePoints = [];
+  for (var i = 0; i < activeCps.length - 1; i++) {
+    var pStart = activeCps[i], pEnd = activeCps[i+1];
+    var steps = 40;
+    for (var j = 0; j <= steps; j++) {
+      var ratio = j / steps;
+      var lLat = pStart.lat + (pEnd.lat - pStart.lat) * ratio;
+      var lLng = pStart.lng + (pEnd.lng - pStart.lng) * ratio;
+      previewRoutePoints.push({ lat: lLat, lng: lLng, heading: getBearing(pStart.lat, pStart.lng, pEnd.lat, pEnd.lng) });
+    }
+  }
+
+  isPreviewMode = true; previewCurrentPointIdx = 0;
+  passedCheckpoints = {}; renderCheckpointLists();
+
+  if(document.getElementById('previewTxt')) document.getElementById('previewTxt').textContent = "หยุดตัวจำลอง";
+  if(document.getElementById('previewBtn')) document.getElementById('previewBtn').style.backgroundColor = "var(--rd)";
+  
+  var banner = document.getElementById('modeBanner');
+  if(banner) {
+    banner.style.display = "block"; banner.style.backgroundColor = "#7C3AED";
+    banner.textContent = "👁️ กำลังรัน Preview จำลองเส้นทางขับขี่";
+  }
+
+  if (!isTripActive) toggleMapTrip();
+
+  previewInterval = setInterval(function() {
+    if (previewCurrentPointIdx >= previewRoutePoints.length) { stopPreview(); showToast("🏁 สิ้นสุดการจำลองเส้นทาง"); return; }
+    var pt = previewRoutePoints[previewCurrentPointIdx];
+    
+    myLat = pt.lat; myLng = pt.lng; myHeading = pt.heading; mySpeed = 85;
+    if(document.getElementById('mapSpd')) document.getElementById('mapSpd').textContent = mySpeed;
+    if(document.getElementById('tripSpd')) document.getElementById('tripSpd').textContent = mySpeed + " กม/ชม";
+
+    updateTruckMarkerPosition(myLat, myLng, myHeading, mySpeed);
+    checkProximityAlerts(myLat, myLng, mySpeed);
+
+    if (previewCurrentPointIdx % 2 === 0 && lMap) lMap.panTo([myLat, myLng]);
+    previewCurrentPointIdx++;
+  }, 150);
+}
+function stopPreview() {
+  isPreviewMode = false; if (previewInterval) clearInterval(previewInterval);
+  if(document.getElementById('previewTxt')) document.getElementById('previewTxt').textContent = "Preview เส้นทาง";
+  if(document.getElementById('previewBtn')) document.getElementById('previewBtn').style.backgroundColor = "#7C3AED";
+  if(document.getElementById('modeBanner')) document.getElementById('modeBanner').style.display = "none";
+}
+function getBearing(lat1, lon1, lat2, lon2) {
+  var dLon = (lon2 - lon1) * Math.PI / 180;
+  var lat1Rad = lat1 * Math.PI / 180, lat2Rad = lat2 * Math.PI / 180;
+  var y = Math.sin(dLon) * Math.cos(lat2Rad);
+  var x = Math.cos(lat1Rad) * Math.sin(lat2Rad) - Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLon);
+  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+}
+
+// ===== TRIP TIME CLOCK =====
+function toggleTrip() {
+  if (!isTripActive) {
+    isTripActive = true; tripStartTime = new Date();
+    passedCheckpoints = {}; lastActiveAlertCpId = null;
+    if(document.getElementById('startBtn')) document.getElementById('startBtn').className = "btn btn-gy";
+    if(document.getElementById('startTxt')) document.getElementById('startTxt').textContent = "⏸️ หยุดบันทึกชั่วคราว";
+    showToast("🚀 เริ่มต้นนับเวลาการเดินทางจริง");
+    
+    tripTimerInterval = setInterval(updateTripTimer, 1000);
+    renderCheckpointLists(); renderMapElements();
+    if (!watchId) requestGPS();
+  } else {
+    isTripActive = false; if (tripTimerInterval) clearInterval(tripTimerInterval);
+    if(document.getElementById('startBtn')) document.getElementById('startBtn').className = "btn btn-gn";
+    if(document.getElementById('startTxt')) document.getElementById('startTxt').textContent = "▶ เดินทางต่อ (Resume)";
+    showToast("⏸️ หยุดบันทึกชั่วคราว");
+    saveTripToHistory();
+  }
+  updateTripUIButtons();
+}
+function toggleMapTrip() { toggleTrip(); }
+function updateTripUIButtons() {
+  var mIcon = document.getElementById('mapStartIcon'), mTxt = document.getElementById('mapStartTxt'), mBtn = document.getElementById('mapStartBtn');
+  if (isTripActive) {
+    if (mIcon) mIcon.textContent = "⏸"; if (mTxt) mTxt.textContent = "หยุดชั่วคราว";
+    if (mBtn) mBtn.style.backgroundColor = "var(--rd)";
+  } else {
+    if (mIcon) mIcon.textContent = "▶"; if (mTxt) mTxt.textContent = "เริ่มเดินทางจริง";
+    if (mBtn) mBtn.style.backgroundColor = "var(--gn)";
+  }
+}
+function updateTripTimer() {
+  if (!tripStartTime) return;
+  var diff = new Date() - tripStartTime;
+  var hours = Math.floor(diff / 3600000), minutes = Math.floor((diff % 3600000) / 60000), seconds = Math.floor((diff % 60000) / 1000);
+  var pad = function(n){return n<10?'0'+n:n;};
+  var timeStr = pad(hours) + ":" + pad(minutes) + ":" + pad(seconds);
+  
+  if(document.getElementById('tripElapsed')) document.getElementById('tripElapsed').textContent = timeStr;
+  if(document.getElementById('mapTime')) document.getElementById('mapTime').textContent = pad(minutes) + ":" + pad(seconds);
+}
+function resetTrip() {
+  if (confirm("ต้องการรีเซ็ตการเดินทางรอบนี้ใช่หรือไม่?")) {
+    isTripActive = false; if (tripTimerInterval) clearInterval(tripTimerInterval);
+    if (previewInterval) clearInterval(previewInterval); isPreviewMode = false;
+    tripStartTime = null; passedCheckpoints = {}; lastActiveAlertCpId = null;
+    
+    if(document.getElementById('tripElapsed')) document.getElementById('tripElapsed').textContent = "00:00:00";
+    if(document.getElementById('mapTime')) document.getElementById('mapTime').textContent = "00:00";
+    if(document.getElementById('startBtn')) document.getElementById('startBtn').className = "btn btn-gn";
+    if(document.getElementById('startTxt')) document.getElementById('startTxt').textContent = "▶ เริ่มออกเดินทาง";
+    if(document.getElementById('proxBanner')) document.getElementById('proxBanner').classList.remove('show');
+    
+    updateTripUIButtons(); stopPreview(); renderCheckpointLists(); renderMapElements();
+    showToast("↺ รีเซ็ตทริปเรียบร้อย");
+  }
+}
+function saveTripToHistory() {
+  var activeCps = checkpoints.filter(function(c){return c.routeId === currentRouteId;});
+  var total = activeCps.length, passed = Object.keys(passedCheckpoints).length;
+  if (passed === 0) return;
+
+  var currentRoute = routes.find(function(r){return r.id === currentRouteId;});
+  var log = {
+    id: Date.now(),
+    routeName: currentRoute ? currentRoute.name : currentRouteId,
+    date: new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' }),
+    time: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }),
+    elapsed: document.getElementById('tripElapsed') ? document.getElementById('tripElapsed').textContent : "00:00:00",
+    score: passed + "/" + total
+  };
+  historyLogs.unshift(log); saveHistData(); renderHistoryList();
+  if (cloudUrl && cloudAutoSync > 0) cloudPush();
+}
+
+// ===== UI RENDER SYSTEMS =====
+function renderRouteLists() {
+  var list = document.getElementById('routeList'), adminList = document.getElementById('adminRouteList');
+  if(!list) return;
+  list.innerHTML = ""; if(adminList) adminList.innerHTML = "";
+  
+  routes.forEach(function(r) {
+    var totalCps = checkpoints ? checkpoints.filter(function(c){return c.routeId === r.id;}).length : 0;
+    var activeClass = r.id === currentRouteId ? "current" : "";
+    if (!r.active) activeClass += " inactive";
+
+    var html = '<div class="route-card ' + activeClass + '" onclick="selectRoute(\'' + r.id + '\')">' +
+      '<div class="route-card-head">' +
+        '<div class="route-card-id" style="background:' + (r.color||'var(--or)') + '">' + r.id + '</div>' +
+        '<div class="route-card-body">' +
+          '<div class="route-card-name">' + r.name + '</div>' +
+          '<div class="route-card-meta">ต้นทาง: ' + r.origin + ' ➔ ปลายทาง: ' + r.dest + '</div>' +
+        '</div>' +
+        (r.id === currentRouteId ? '<div class="route-card-tick">✓</div>' : '') +
+      '</div>' +
+      '<div class="route-card-foot">' +
+        '<div class="route-stat">ระยะทาง <b>' + r.distance + ' กม.</b></div>' +
+        '<div class="route-stat">จุดเสี่ยง <b>' + totalCps + ' จุด</b></div>' +
+        '<div class="route-status ' + (r.active?'on':'off') + '">' + (r.active?'พร้อมใช้':'ปิด') + '</div>' +
+      '</div>' +
+    '</div>';
+    list.insertAdjacentHTML('beforeend', html);
+
+    if(adminList) {
+      var aHtml = '<div class="admin-route-row" onclick="openRouteEdit(\'' + r.id + '\')">' +
+        '<div class="admin-route-id" style="background:' + (r.color||'var(--or)') + '">' + r.id + '</div>' +
+        '<div style="flex:1;min-width:0">' +
+          '<div style="font-size:13px;font-weight:600;color:var(--dk);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + r.name + '</div>' +
+          '<div style="font-size:10px;color:var(--gr)">' + r.distance + ' กม. · ' + totalCps + ' เช็กพอยต์</div>' +
+        '</div>' +
+        '<div style="font-size:12px;color:var(--gr)">⚙️ แก้ไข</div>' +
+      '</div>';
+      adminList.insertAdjacentHTML('beforeend', aHtml);
+    }
+  });
+  
+  var curR = routes.find(function(r){return r.id === currentRouteId;});
+  if (curR && document.getElementById('tbRouteName')) document.getElementById('tbRouteName').textContent = curR.id + ": " + curR.name;
+}
+function selectRoute(id) {
+  currentRouteId = id; setStorageItem('kspCurrentRouteId', id);
+  passedCheckpoints = {}; lastActiveAlertCpId = null;
+  renderRouteLists(); renderCheckpointLists();
+  if (lMap) { renderMapElements(); centerMap(); }
+  showToast("🛣️ เปลี่ยนเส้นทางเป็น " + id);
+  goScreen('map');
+}
+function renderCheckpointLists() {
+  var list = document.getElementById('cpList'), adminList = document.getElementById('adminList');
+  if(!list) return;
+  list.innerHTML = ""; if(adminList) adminList.innerHTML = "";
+
+  var activeCps = checkpoints ? checkpoints.filter(function(c){return c.routeId === currentRouteId;}).sort(function(a,b){return parseFloat(a.km)-parseFloat(b.km);}) : [];
+  var total = activeCps.length, passed = Object.keys(passedCheckpoints).length;
+
+  if(document.getElementById('tripChk')) document.getElementById('tripChk').textContent = passed + "/" + total;
+  if(document.getElementById('mapChk')) document.getElementById('mapChk').textContent = passed + "/" + total;
+  var pct = total > 0 ? (passed / total * 100) : 0;
+  if(document.getElementById('progFill')) document.getElementById('progFill').style.width = pct + "%";
+
+  activeCps.forEach(function(cp) {
+    var isDone = passedCheckpoints[cp.id];
+    var isAlertActive = lastActiveAlertCpId === cp.id;
+    var itemClass = "cp-item " + (isDone ? "done" : "");
+    if (isAlertActive) itemClass += (cp.type === 'community' ? ' nearby-warn' : ' nearby');
+
+    var html = '<div class="' + itemClass + '" onclick="focusMarker(' + cp.lat + ',' + cp.lng + ')">' +
+      '<div class="cp-dot" style="background:' + (isDone?'var(--gn2)':(cp.type==='community'?'var(--pu2)':'var(--rd2)')) + '">' + getTrafficSignSmall(cp.type,24,24) + '</div>' +
+      '<div class="cp-body">' +
+        '<div class="cp-name">' + cp.name + '</div>' +
+        '<div class="cp-sub">ตำแหน่ง: ' + cp.km + ' · ' + (isDone ? '⏱️ ผ่านแล้วเมื่อ ' + isDone : '📡 ตรวจพิกัดอัตโนมัติ') + '</div>' +
+      '</div>' +
+      '<div class="cp-chk">' + (isDone ? '✓' : '') + '</div>' +
+    '</div>';
+    list.insertAdjacentHTML('beforeend', html);
+
+    if(adminList) {
+      var admHtml = '<div class="admin-card" id="cp-card-' + cp.id + '">' +
+        '<div class="admin-card-head" onclick="toggleAdminCard(' + cp.id + ')">' +
+          '<div class="admin-em" style="background:var(--bg)">' + (cp.emoji||"⚠️") + '</div>' +
+          '<div class="admin-name">' + cp.name + ' <span style="font-size:10px;color:var(--gr)">(' + cp.km + ')</span></div>' +
+          '<div style="font-size:11px;color:var(--bl);font-weight:600" onclick="event.stopPropagation();openEdit(' + cp.id + ')">📝 แก้ไข</div>' +
+        '</div>' +
+      '</div>';
+      adminList.insertAdjacentHTML('beforeend', admHtml);
+    }
+  });
+}
+function focusMarker(lat, lng) { goScreen('map'); if(lMap) lMap.setView([lat, lng], 16); }
+function toggleAdminCard(id) { if(document.getElementById('cp-card-'+id)) document.getElementById('cp-card-'+id).classList.toggle('open'); }
+
+function renderHistoryList() {
+  var list = document.getElementById('histList'), empty = document.getElementById('histEmpty'), btn = document.getElementById('clearHistBtn');
+  if(!list) return;
+  list.innerHTML = "";
+  if (!historyLogs || historyLogs.length === 0) { 
+    if(empty) empty.style.display = "block"; if(btn) btn.style.display = "none"; return; 
+  }
+  if(empty) empty.style.display = "none"; if(btn) btn.style.display = "block";
+
+  historyLogs.forEach(function(h) {
+    var html = '<div class="hist-item">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">' +
+        '<span class="badge badge-bl">' + h.date + ' ' + h.time + '</span>' +
+        '<span class="badge badge-gn" style="margin-left:auto">ผ่านจุด ' + h.score + '</span>' +
+      '</div>' +
+      '<div style="font-size:12px;font-weight:600;color:var(--dk);margin:3px 0">' + h.routeName + '</div>' +
+      '<div style="font-size:10px;color:var(--gr)">⏱️ เวลาเดินทางทริปนี้: ' + h.elapsed + '</div>' +
+    '</div>';
+    list.insertAdjacentHTML('beforeend', html);
+  });
+}
+function clearHist() { if (confirm("ยืนยันล้างประวัติการเดินทางทั้งหมด?")) { historyLogs=[]; saveHistData(); renderHistoryList(); } }
+
+// ===== ADMIN SUB-FORMS =====
+function openAdd() {
+  if (!adminUnlocked) { lockAdmin(); return; }
+  document.getElementById('adminModalT').textContent = "เพิ่มจุดเสี่ยงเซฟตี้ใหม่";
+  document.getElementById('editIdx').value = "";
+  document.getElementById('fName').value = ""; document.getElementById('fKm').value = "";
+  document.getElementById('fType').value = "curve"; document.getElementById('fEmoji').value = "⚠️";
+  document.getElementById('fLat').value = ""; document.getElementById('fLng').value = "";
+  document.getElementById('fAlert').value = "true"; document.getElementById('fTitle').value = "";
+  document.getElementById('fDesc').value = ""; document.getElementById('fSpeak').value = "";
+  document.getElementById('rulesEditor').innerHTML = "";
+  document.getElementById('delBtn').style.display = "none";
+  updateTypeUI(); document.getElementById('adminModal').style.display = "flex";
+}
+function openEdit(id) {
+  var cp = checkpoints.find(function(c){return c.id === id;}); if (!cp) return;
+  document.getElementById('adminModalT').textContent = "แก้ไขข้อมูลจุดเสี่ยง";
+  document.getElementById('editIdx').value = cp.id;
+  document.getElementById('fName').value = cp.name; document.getElementById('fKm').value = cp.km;
+  document.getElementById('fType').value = cp.type; document.getElementById('fEmoji').value = cp.emoji||"⚠️";
+  document.getElementById('fLat').value = cp.lat; document.getElementById('fLng').value = cp.lng;
+  document.getElementById('fAlert').value = cp.alert ? "true" : "false";
+  document.getElementById('fTitle').value = cp.title || "";
+  document.getElementById('fDesc').value = cp.desc || "";
+  document.getElementById('fSpeak').value = cp.speak || "";
+  
+  var editor = document.getElementById('rulesEditor'); editor.innerHTML = "";
+  if (cp.rules) { cp.rules.forEach(function(r){ addRule(r); }); }
+  
+  document.getElementById('delBtn').style.display = "block";
+  updateTypeUI(); document.getElementById('adminModal').style.display = "flex";
+}
+function closeAdminModal() { document.getElementById('adminModal').style.display = "none"; }
+function updateTypeUI() {
+  var t = document.getElementById('fType').value;
+  var hasAlert = t !== 'start';
+  document.getElementById('alertDetailFields').style.display = hasAlert ? 'block' : 'none';
+  document.getElementById('signPreview').innerHTML = getTrafficSignSmall(t, 28, 28);
+  var lbl = document.getElementById('signPreviewLabel');
+  
+  if (customSignTypes[t]) {
+    lbl.textContent = "ป้ายความเสี่ยงโรงงาน (" + customSignTypes[t].label + ")";
+    lbl.style.color = "var(--pu)";
+  } else if (t==='start'||t==='arrive') { 
+    lbl.textContent="หมวดนำทาง"; lbl.style.color="var(--gn)"; 
+  } else if (t==='community') { 
+    lbl.textContent="ป้ายชุมชน"; lbl.style.color="var(--pu)"; 
+  } else { 
+    lbl.textContent="ป้ายเตือนจราจร"; lbl.style.color="var(--or)"; 
+  }
+}
+function addRule(val) {
+  var editor = document.getElementById('rulesEditor');
+  var div = document.createElement('div'); div.className = "rule-item";
+  div.innerHTML = '<div class="rule-emoji">🛑</div><input class="rule-text" value="' + (val||'') + '" placeholder="ระเบียบเซฟตี้ เช่น ลดความเร็ว"><button class="rule-del" onclick="this.parentElement.remove()">✕</button>';
+  editor.appendChild(div);
+}
+function useMyGPS() {
+  if (myLat && myLng) {
+    document.getElementById('fLat').value = myLat.toFixed(5);
+    document.getElementById('fLng').value = myLng.toFixed(5);
+    showToast("📍 ล็อกพิกัดปัจจุบันเรียบร้อย");
+  } else { showToast("❌ สัญญาณ GPS ยังไม่พร้อมใช้งาน"); }
+}
+function saveCp() {
+  var name = document.getElementById('fName').value.trim();
+  var lat = parseFloat(document.getElementById('fLat').value), lng = parseFloat(document.getElementById('fLng').value);
+  if (!name || isNaN(lat) || isNaN(lng)) { alert("กรุณากรอกชื่อ และ พิกัด Lat/Lng ให้ถูกต้อง"); return; }
+
+  var idVal = document.getElementById('editIdx').value;
+  var rules = []; document.querySelectorAll('#rulesEditor .rule-text').forEach(function(i){ if(i.value.trim()) rules.push(i.value.trim()); });
+
+  var cpData = {
+    id: idVal !== "" ? parseInt(idVal) : Date.now(),
+    routeId: currentRouteId,
+    name: name,
+    km: document.getElementById('fKm').value.trim() || "0.0 กม.",
+    type: document.getElementById('fType').value,
+    emoji: document.getElementById('fEmoji').value.trim() || "⚠️",
+    lat: lat, lng: lng,
+    alert: document.getElementById('fAlert').value === "true",
+    title: document.getElementById('fTitle').value.trim(),
+    desc: document.getElementById('fDesc').value.trim(),
+    speak: document.getElementById('fSpeak').value.trim(),
+    rules: rules
+  };
+
+  if (idVal !== "") {
+    var idx = checkpoints.findIndex(function(c){return c.id === cpData.id;});
+    if (idx !== -1) checkpoints[idx] = cpData;
+  } else { checkpoints.push(cpData); }
+
+  saveCpsData(); closeAdminModal(); renderCheckpointLists(); if(lMap) renderMapElements();
+  showToast("💾 บันทึกจุดเสี่ยงเรียบร้อย");
+}
+function deleteCp() {
+  var idVal = parseInt(document.getElementById('editIdx').value);
+  if (confirm("ยืนยันลบทันที?")) {
+    checkpoints = checkpoints.filter(function(c){return c.id !== idVal;});
+    saveCpsData(); closeAdminModal(); renderCheckpointLists(); if(lMap) renderMapElements();
+    showToast("🗑️ ลบสำเร็จ");
+  }
+}
+
+// ===== ROUTE ACTIONS =====
+function openRouteEdit(id) {
+  if (!adminUnlocked) { lockAdmin(); return; }
+  if (id === "") {
+    document.getElementById('reEditId').value = ""; document.getElementById('reRouteId').value = "";
+    document.getElementById('reName').value = ""; document.getElementById('reOrigin').value = "";
+    document.getElementById('reDest').value = ""; document.getElementById('reDist').value = "";
+    document.getElementById('reColor').value = "#BA7517"; document.getElementById('reActive').value = "true";
+    document.getElementById('reNotes').value = ""; document.getElementById('reDelBtn').style.display = "none";
+    document.getElementById('reRouteId').disabled = false;
+  } else {
+    var r = routes.find(function(rt){return rt.id === id;}); if (!r) return;
+    document.getElementById('reEditId').value = r.id; document.getElementById('reRouteId').value = r.id;
+    document.getElementById('reName').value = r.name; document.getElementById('reOrigin').value = r.origin||"";
+    document.getElementById('reDest').value = r.dest||""; document.getElementById('reDist').value = r.distance||"";
+    document.getElementById('reColor').value = r.color || "#BA7517";
+    document.getElementById('reActive').value = r.active ? "true" : "false";
+    document.getElementById('reNotes').value = r.notes || "";
+    document.getElementById('reDelBtn').style.display = "block";
+    document.getElementById('reRouteId').disabled = true;
+  }
+  document.getElementById('routeEditModal').style.display = "flex";
+}
+function closeRouteEdit() { document.getElementById('routeEditModal').style.display = "none"; }
+function saveRouteEdit() {
+  var id = document.getElementById('reRouteId').value.trim().toUpperCase();
+  var name = document.getElementById('reName').value.trim();
+  if (!id || !name) { alert("กรุณาระบุรหัสและชื่อเส้นทาง"); return; }
+
+  var isNew = document.getElementById('reEditId').value === "";
+  var rData = {
+    id: id, name: name,
+    origin: document.getElementById('reOrigin').value.trim(),
+    dest: document.getElementById('reDest').value.trim(),
+    distance: parseFloat(document.getElementById('reDist').value) || 0,
+    color: document.getElementById('reColor').value,
+    active: document.getElementById('reActive').value === "true",
+    notes: document.getElementById('reNotes').value.trim()
+  };
+
+  if (isNew) {
+    if (routes.some(function(rt){return rt.id === id;})) { alert("รหัสเส้นทางซ้ำ!"); return; }
+    routes.push(rData); currentRouteId = id;
+  } else {
+    var idx = routes.findIndex(function(rt){return rt.id === id;});
+    if (idx !== -1) routes[idx] = rData;
+  }
+
+  saveRoutesData(); closeRouteEdit(); renderRouteLists(); if(lMap) renderMapElements();
+  showToast("🛣️ บันทึกโครงสร้างเส้นทางสำเร็จ");
+}
+function deleteRoute() {
+  var id = document.getElementById('reEditId').value;
+  if (confirm("ลบเส้นทางจะล้างจุดตรวจสอบรหัส " + id + " ทั้งหมด! ยืนยันใช่หรือไม่?")) {
+    routes = routes.filter(function(r){return r.id !== id;});
+    checkpoints = checkpoints.filter(function(c){return c.routeId !== id;});
+    saveRoutesData(); saveCpsData();
+    if (currentRouteId === id && routes.length > 0) currentRouteId = routes[0].id;
+    closeRouteEdit(); renderRouteLists(); renderCheckpointLists(); if(lMap) renderMapElements();
+    showToast("🗑️ ลบกลุ่มเส้นทางเรียบร้อย");
+  }
+}
+
+// ===== REAL PHOTO SIGN MANAGEMENT GRID =====
+function renderSignUploadGrid() {
+  var grid = document.getElementById('signUploadGrid'); if (!grid) return;
+  grid.innerHTML = "";
+  
+  var baseTypes = [
+    {id:'curve', name:'โค้งหักศอก'}, {id:'junction', name:'ทางสี่แยก'},
+    {id:'merge', name:'จุดทางร่วม'}, {id:'narrow', name:'ทางแคบลง'},
+    {id:'downhill', name:'ทางลงเนินชัน'}, {id:'community', name:'เขตชุมชน'},
+    {id:'danger', name:'จุดอันตรายสูง'}, {id:'warn', name:'ระวังทั่วไป'}
+  ];
+
+  var allTypes = [].concat(baseTypes);
+  for (var cType in customSignTypes) {
+    allTypes.push({ id: cType, name: customSignTypes[cType].label });
+  }
+
+  allTypes.forEach(function(t) {
+    var hasImg = signImages && signImages[t.id];
+    var div = document.createElement('div');
+    div.className = "tog-row"; div.style.flexDirection = "column"; div.style.alignItems = "stretch"; div.style.padding = "10px"; div.style.background = "var(--wh)"; div.style.borderRadius = "var(--r)"; div.style.border = "1px solid var(--bd)";
+    
+    var imgHtml = hasImg ? '<img src="'+signImages[t.id]+'" style="width:100%;height:85px;object-fit:contain;margin-bottom:6px;border-radius:4px">' : '<div style="height:85px;background:var(--bg);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--gr);margin-bottom:6px;font-weight:500;border:1px dashed var(--bd)">➕ อัปโหลดรูปจริง</div>';
+    
+    div.innerHTML = '<div style="font-size:12px;font-weight:700;margin-bottom:6px;text-align:center;color:var(--dk)">' + t.name + '</div>' +
+      '<label style="cursor:pointer">' + imgHtml + '<input type="file" accept="image/*" style="display:none" onchange="uploadSignImage(\''+t.id+'\', this)"></label>';
+    
+    var btnContainer = document.createElement('div');
+    btnContainer.style.cssText = "display:flex;gap:4px;width:100%;margin-top:4px";
+
+    if (hasImg) {
+      var delBtn = document.createElement('button');
+      delBtn.textContent = "✕ ถอนรูป"; delBtn.style.cssText = "flex:1;font-size:10px;color:var(--rd3);background:var(--rd2);border:1px solid var(--rd);padding:4px;border-radius:4px;cursor:pointer;font-weight:600";
+      delBtn.onclick = function() { if(signImages) { delete signImages[t.id]; saveSignImages(); renderSignUploadGrid(); showToast("ล้างรูปสำเร็จ"); } };
+      btnContainer.appendChild(delBtn);
+    }
+    
+    if (customSignTypes[t.id]) {
+      var delTypeBtn = document.createElement('button');
+      delTypeBtn.textContent = "🗑️ ลบกล่องป้าย"; delTypeBtn.style.cssText = "flex:1;font-size:10px;color:#fff;background:var(--rd);border:none;padding:4px;border-radius:4px;cursor:pointer;font-weight:600";
+      delTypeBtn.onclick = function() {
+        if (confirm("ต้องการลบกล่องป้าย \"" + t.name + "\" ออกจากระบบถาวรหรือไม่?")) {
+          delete customSignTypes[t.id];
+          if(signImages) delete signImages[t.id];
+          setStorageItem('kspCustomSigns', JSON.stringify(customSignTypes));
+          saveSignImages(); loadCustomSignTypes(); renderSignUploadGrid();
+          showToast("🗑️ ลบป้ายสำเร็จ");
+        }
+      };
+      btnContainer.appendChild(delTypeBtn);
+    }
+    
+    if (hasImg || customSignTypes[t.id]) {
+      div.appendChild(btnContainer);
+    }
+    grid.appendChild(div);
+  });
+}
+function uploadSignImage(type, input) {
+  if (input.files && input.files[0]) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var img = new Image();
+      img.onload = function() {
+        var canvas = document.createElement('canvas');
+        var max_size = 200; var w = img.width, h = img.height;
+        if (w > h) { if (w > max_size) { h *= max_size / w; w = max_size; } }
+        else { if (h > max_size) { w *= max_size / h; h = max_size; } }
+        canvas.width = w; canvas.height = h;
+        var ctx = canvas.getContext('2d');
+        if(ctx) ctx.drawImage(img, 0, 0, w, h);
+        
+        if(!signImages) signImages = {};
+        signImages[type] = canvas.toDataURL('image/jpeg', 0.7);
+        saveSignImages(); renderSignUploadGrid(); showToast("📷 อัปโหลดรูปป้ายเรียบร้อย");
+      };
+      if(e.target) img.src = e.target.result;
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+
+// ===== EXPORT / IMPORT JSON =====
+function exportData() {
+  var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(checkpoints, null, 2));
+  var downloadAnchor = document.createElement('a');
+  downloadAnchor.setAttribute("href", dataStr); downloadAnchor.setAttribute("download", "ksp_checkpoints.json");
+  document.body.appendChild(downloadAnchor); downloadAnchor.click(); downloadAnchor.remove();
+}
+function importData() {
+  try {
+    var raw = document.getElementById('importJson').value.trim();
+    if (!raw) { alert("กรุณาวางโค้ด JSON"); return; }
+    var parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      checkpoints = parsed; saveCpsData(); renderCheckpointLists(); if(lMap) renderMapElements();
+      showToast("📥 นำเข้าข้อมูลพิกัดสำเร็จ");
+    } else { alert("โครงสร้างสคริปต์ JSON ต้องเป็นรูปแบบ Array"); }
+  } catch(e) { alert("รูปแบบโค้ด JSON ผิดพลาด: " + e.message); }
+}
+
+// ===== GOOGLE SHEETS CLOUD SYNC =====
+function openCloudConfig() { document.getElementById('cloudModal').style.display = "flex"; }
+function closeCloudConfig() { document.getElementById('cloudModal').style.display = "none"; }
+function saveCloudConfig() {
+  cloudUrl = document.getElementById('cloudUrl').value.trim();
+  cloudDriver = document.getElementById('cloudDriver').value.trim() || "คนขับรถบรรทุก KSP";
+  cloudAutoSync = parseInt(document.getElementById('cloudAutoSync').value) || 0;
+  
+  setStorageItem('kspCloud', JSON.stringify({ url: cloudUrl, driver: cloudDriver, autoSync: cloudAutoSync }));
+  closeCloudConfig();
+  
+  var statusEl = document.getElementById('cloudStatus');
+  if(statusEl) {
+    if (cloudUrl) { statusEl.innerHTML = "🔗 เชื่อมต่อผู้ขับ: <b>" + cloudDriver + "</b>"; showToast("☁️ ตั้งค่าเรียบร้อย"); }
+    else { statusEl.textContent = "ยังไม่ได้ตั้งค่า URL"; }
+  }
+  setupCloudIntervalTimer();
+}
+function setupCloudIntervalTimer() {
+  if (cloudTimer) clearInterval(cloudTimer);
+  if (cloudAutoSync > 0 && cloudUrl) {
+    cloudTimer = setInterval(function() { if (isTripActive) cloudPush(); }, cloudAutoSync * 1000);
+  }
+}
+function cloudPush() {
+  if (!cloudUrl) { showToast("❌ ยังไม่ได้เชื่อมระบบ API Cloud"); return; }
+  var pBtn = document.getElementById('cloudPushBtn'); if(pBtn) { pBtn.textContent = "⏳..."; pBtn.disabled = true; }
+  
+  var payload = {
+    action: "push_data", driver: cloudDriver, timestamp: new Date().toISOString(),
+    currentRoute: currentRouteId, lat: myLat, lng: myLng, speed: mySpeed,
+    elapsed: document.getElementById('tripElapsed') ? document.getElementById('tripElapsed').textContent : "00:00:00",
+    checkpointsPassed: Object.keys(passedCheckpoints).length, history: historyLogs
+  };
+
+  fetch(cloudUrl, { method: "POST", mode: "no-cors", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
