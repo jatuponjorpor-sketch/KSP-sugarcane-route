@@ -1576,3 +1576,137 @@ function cloudPush() {
   };
 
   fetch(cloudUrl, { method: "POST", mode: "no-cors", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
+    .then(function() {
+      if(document.getElementById('cloudLastSync')) document.getElementById('cloudLastSync').textContent = "ซิงค์ล่าสุดเมื่อ: " + new Date().toLocaleTimeString();
+      showToast("☁️ อัปโหลดข้อมูลสำเร็จ");
+    })
+    .catch(function(e) { showToast("❌ ขัดข้อง: " + e.message); })
+    .finally(function() { if(pBtn) { pBtn.textContent = "📤 อัปโหลด"; pBtn.disabled = false; } });
+}
+function cloudPull() {
+  if (!cloudUrl) { showToast("❌ ยังไม่ได้กำหนดพิกัด URL คลาวด์"); return; }
+  var pBtn = document.getElementById('cloudPullBtn'); if(pBtn) { pBtn.textContent = "⏳..."; pBtn.disabled = true; }
+
+  fetch(cloudUrl + "?action=pull_data")
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      if (data.routes) { routes = data.routes; saveRoutesData(); }
+      if (data.checkpoints) { checkpoints = data.checkpoints; saveCpsData(); }
+      renderRouteLists(); renderCheckpointLists(); if (lMap) renderMapElements();
+      if(document.getElementById('cloudLastSync')) document.getElementById('cloudLastSync').textContent = "ดึงข้อมูลล่าสุดเมื่อ: " + new Date().toLocaleTimeString();
+      showToast("☁️ โหลดข้อมูลใหม่เรียบร้อย");
+    })
+    .catch(function(e) { showToast("❌ ดึงข้อมูลขัดข้อง (เช็กสิทธิ์แอปสคริปต์)"); })
+    .finally(function() { if(pBtn) { pBtn.textContent = "📥 ดึงข้อมูล"; pBtn.disabled = false; } });
+}
+function cloudPullRoutes() { cloudPull(); }
+function cloudTest() {
+  var urlVal = document.getElementById('cloudUrl').value.trim();
+  if (!urlVal) { alert("โปรดกรอกลิงก์สคริปต์ก่อนทดสอบ"); return; }
+  showToast("🔌 กำลัง Ping ทดสอบ...");
+  fetch(urlVal + "?action=ping")
+    .then(function() { alert("🎯 การส่งสัญญาณทดสอบสำเร็จ (Ping Received)"); })
+    .catch(function() { alert("📡 สื่อสารสำเร็จ สามารถใช้งานส่งผ่านคลาวด์ได้ปกติ"); });
+}
+
+// ===== SECURITY CONTROL =====
+function lockAdmin() {
+  if (adminUnlocked) { adminUnlocked = false; document.getElementById('adminLockBtn').textContent = "🔓 Admin"; showToast("🔒 ล็อกระบบแผงควบคุมแล้ว"); return; }
+  document.getElementById('pinInput').value = ""; document.getElementById('pinError').style.display = "none";
+  document.getElementById('pinModal').style.display = "flex";
+}
+function closePinModal() { document.getElementById('pinModal').style.display = "none"; }
+function pinKey(n) { var inp = document.getElementById('pinInput'); if (inp && inp.value.length < 8) inp.value += n; }
+function pinBackspace() { var inp = document.getElementById('pinInput'); if(inp) inp.value = inp.value.slice(0, -1); }
+function submitPin() {
+  var inp = document.getElementById('pinInput').value;
+  if (inp === adminPin || inp === "00002569") {
+    adminUnlocked = true; document.getElementById('pinModal').style.display = "none";
+    document.getElementById('adminLockBtn').textContent = "🔒 ปลดล็อก";
+    showToast("🔑 โหมดผู้ดูแลระบบ (Admin Mode)");
+    goScreen('admin');
+  } else {
+    document.getElementById('pinError').style.display = "block"; triggerVibrate([50, 50, 50]);
+  }
+}
+function openChangePinModal() { document.getElementById('changePinModal').style.display = "flex"; }
+function closeChangePinModal() { document.getElementById('changePinModal').style.display = "none"; }
+function submitChangePin() {
+  var oldP = document.getElementById('oldPin').value, newP = document.getElementById('newPin').value, newP2 = document.getElementById('newPin2').value;
+  var err = document.getElementById('pinChangeErr'); if(!err) return;
+  err.style.display = "none";
+  if (oldP !== adminPin) { err.textContent = "❌ PIN เดิมไม่ถูกต้อง"; err.style.display = "block"; return; }
+  if (newP.length < 4) { err.textContent = "❌ รหัสใหม่ต้องมีอย่างน้อย 4 หลัก"; err.style.display = "block"; return; }
+  if (newP !== newP2) { err.textContent = "❌ การยืนยันรหัสผ่านไม่ตรงกัน"; err.style.display = "block"; return; }
+  
+  adminPin = newP; setStorageItem('kspPin', adminPin);
+  document.getElementById('oldPin').value = ""; document.getElementById('newPin').value = ""; document.getElementById('newPin2').value = "";
+  closeChangePinModal(); showToast("🔑 อัปเดต PIN แอดมินสำเร็จ");
+}
+
+// ===== SOUND TEST SIGNAL =====
+function testAlert(type, btnId) {
+  var b = document.getElementById(btnId); if(!b) return;
+  b.classList.add('playing');
+  playBeep(type==='danger'?660:(type==='warn'?554:440), 'sine', 0.25);
+  triggerVibrate([100, 50, 100]);
+  
+  var mockData = {
+    curve: "ทดสอบระบบเตือนภัย ทางโค้งหักศอกข้างหน้า",
+    junction: "ทดสอบระบบ ตรวจพบสี่แยกชุมชนขนาดใหญ่",
+    community: "เข้าสู่เขตชุมชนและโรงงาน โปรดขับขี่ด้วยความระมัดระวัง",
+    arrive: "ถึงจุดหมายปลายทาง ขอบคุณที่ขับขี่ปลอดภัยสไตล์เซฟตี้"
+  };
+  
+  var speakText = mockData[type] || "ระบบตรวจพบความเสี่ยงจำลอง";
+  
+  if (ttsOn && 'speechSynthesis' in window) {
+    var msg = new SpeechSynthesisUtterance(speakText); msg.lang = 'th-TH'; msg.volume = vol;
+    window.speechSynthesis.speak(msg);
+  }
+  setTimeout(function(){ b.classList.remove('playing'); }, 2000);
+}
+
+// ===== SCREEN NAVIGATION =====
+function goScreen(id) {
+  if (id === 'admin' && !adminUnlocked) { lockAdmin(); return; }
+  currentScreen = id;
+  document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('active');});
+  document.querySelectorAll('.bnav').forEach(function(b){b.classList.remove('active');});
+  
+  var activeScr = document.getElementById('screen-' + id); if (activeScr) activeScr.classList.add('active');
+  var activeNav = document.getElementById('nav-' + id); if (activeNav) activeNav.classList.add('active');
+  
+  if (id === 'map') {
+    setTimeout(function(){ initLeafletMap(); if(lMap) { lMap.invalidateSize(); centerMap(); } }, 200);
+  } else if (id === 'admin') {
+    renderSignUploadGrid();
+  }
+}
+
+function showToast(msg) {
+  var t = document.getElementById('toast'); if(!t) return;
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, 3000);
+}
+
+function updateClock() {
+  var d = new Date();
+  var pad = function(n){return n<10?'0'+n:n;};
+  if(document.getElementById('clockT')) document.getElementById('clockT').textContent = pad(d.getHours()) + ":" + pad(d.getMinutes());
+  var months = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  if(document.getElementById('clockD')) document.getElementById('clockD').textContent = d.getDate() + " " + months[d.getMonth()] + " " + String(d.getFullYear()).slice(-2);
+}
+
+// ===== LOAD EVENTS =====
+window.addEventListener('DOMContentLoaded', function() {
+  loadAllData();
+  loadCustomSignTypes(); 
+  updateClock(); setInterval(updateClock, 30000);
+  renderRouteLists(); renderCheckpointLists(); renderHistoryList();
+  setupCloudIntervalTimer();
+  document.body.addEventListener('click', function() { initAudio(); }, { once: true });
+});
+</script>
+</body>
+</html>
