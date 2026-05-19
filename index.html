@@ -138,24 +138,24 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Sarabun',sans-serif;backgroun
 .rule-text{flex:1;border:1px solid var(--bd);border-radius:5px;padding:5px 8px;font-size:12px;color:var(--dk);font-family:inherit;outline:none}
 .rule-del{background:none;border:none;color:var(--rd);font-size:16px;cursor:pointer;padding:0 4px}
 .rule-add{background:none;border:1px dashed var(--bd);color:var(--gr);font-size:12px;padding:6px;border-radius:5px;cursor:pointer;width:100%;margin-top:4px}
-.admin-route-row{display:flex;align-items:center;gap:9px;background:var(--wh);border-radius:var(--r);border:1px solid var(--bd);padding:9px 11px;margin-bottom:6px;cursor:pointer}
+.admin-route-row{display:flex;align-items:center;gap:9px;background:var(--wh);border-radius:var(--r);border:1px solid var(--bd);padding:11px;margin-bottom:6px;cursor:pointer}
 .admin-route-id{min-width:38px;height:30px;border-radius:6px;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 
 /* ROUTE LIST */
-.route-card{background:var(--wh);border-radius:var(--rl);border:1px solid var(--bd);padding:12px;margin-bottom:10px;cursor:pointer}
-.route-card.current{border-color:var(--gn);background:var(--gn2);border-width:2px}
+.route-card{background:var(--wh);border-radius:var(--rl);border:1px solid var(--bd);padding:14px;margin-bottom:10px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.03);transition:all 0.2s}
+.route-card.current{border-color:var(--gn);background:var(--gn2);border-width:2px;box-shadow:0 4px 10px rgba(29,158,117,0.15)}
 .route-card.inactive{opacity:0.5}
-.route-card-head{display:flex;align-items:center;gap:10px}
-.route-card-id{min-width:42px;height:42px;border-radius:8px;color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.route-card-head{display:flex;align-items:center;gap:12px}
+.route-card-id{min-width:44px;height:44px;border-radius:10px;color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:inset 0 -3px 0 rgba(0,0,0,0.15)}
 .route-card-body{flex:1;min-width:0}
-.route-card-name{font-size:14px;font-weight:600;color:var(--dk);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.route-card-meta{font-size:11px;color:var(--gr);margin-top:1px}
-.route-card-tick{font-size:18px;color:var(--gn);font-weight:700}
-.route-card-foot{display:flex;gap:10px;margin-top:9px;padding-top:8px;border-top:1px dashed var(--bd);align-items:center}
+.route-card-name{font-size:14px;font-weight:700;color:var(--dk);margin-bottom:2px}
+.route-card-meta{font-size:11px;color:var(--gr);line-height:1.4}
+.route-card-tick{font-size:20px;color:var(--gn);font-weight:700}
+.route-card-foot{display:flex;gap:12px;margin-top:10px;padding-top:10px;border-top:1px dashed var(--bd);align-items:center;flex-wrap:wrap}
 .route-stat{font-size:11px;color:var(--gr)}
 .route-stat b{color:var(--dk);font-weight:600}
-.route-status{margin-left:auto;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px}
-.route-status.on{background:var(--gn2);color:var(--gn3)}
+.route-status{margin-left:auto;font-size:10px;font-weight:700;padding:3px 10px;border-radius:12px}
+.route-status.on{background:var(--gn);color:#fff}
 .route-status.off{background:var(--bg);color:var(--gr)}
 
 /* TRUCK */
@@ -256,11 +256,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Sarabun',sans-serif;backgroun
 
 <div class="screen active" id="screen-routes" style="padding:10px 14px">
   <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-    <div style="flex:1"><div style="font-size:15px;font-weight:700;color:var(--dk)">เลือกเส้นทาง</div><div style="font-size:11px;color:var(--gr)">เลือกเส้นทางก่อนออกเดินทาง</div></div>
-    <button onclick="cloudPullRoutes()" style="background:var(--bl);color:#fff;border:none;padding:8px 12px;border-radius:var(--r);font-size:11px;font-weight:600;cursor:pointer">📥 อัปเดต</button>
+    <div style="flex:1"><div style="font-size:15px;font-weight:700;color:var(--dk)">เลือกเส้นทางขนส่ง</div><div style="font-size:11px;color:var(--gr)">โปรดเลือกเส้นทางเพื่อทำการโหลดข้อมูลจุดตรวจสอบความเสี่ยง</div></div>
+    <button onclick="cloudPullRoutes()" style="background:var(--bl);color:#fff;border:none;padding:8px 12px;border-radius:var(--r);font-size:11px;font-weight:600;cursor:pointer">📥 อัปเดตรายการ</button>
   </div>
   <div id="routeList"></div>
-  <button onclick="goScreen('admin')" style="width:100%;padding:11px;border-radius:var(--r);background:var(--bg);color:var(--or3);border:1px dashed var(--or);font-size:13px;font-weight:600;cursor:pointer;margin-top:10px">⚙️ จัดการเส้นทาง (Admin)</button>
+  <button onclick="goScreen('admin')" style="width:100%;padding:11px;border-radius:var(--r);background:var(--bg);color:var(--or3);border:1px dashed var(--or);font-size:13px;font-weight:600;cursor:pointer;margin-top:10px">⚙️ จัดการเส้นทางทั้งหมด (Admin)</button>
 </div>
 
 <div class="screen" id="screen-map">
@@ -386,8 +386,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Sarabun',sans-serif;backgroun
   
   <button class="admin-add-btn" onclick="openAdd()">+ เพิ่มจุดอันตรายใหม่</button>
   <div class="sec-t" style="display:flex;align-items:center;justify-content:space-between">
-    <span>จุดตรวจสอบ</span>
-    <button onclick="exportData()" style="font-size:11px;padding:4px 9px;border-radius:10px;background:var(--bl2);color:var(--bl3);border:none;cursor:pointer;font-weight:600">📤 Export</button>
+    <span>จุดตรวจสอบความเสี่ยงในระบบ</span>
+    <button onclick="exportData()" style="font-size:11px;padding:4px 9px;border-radius:10px;background:var(--bl2);color:var(--bl3);border:none;cursor:pointer;font-weight:600">📤 Export JSON</button>
   </div>
   <div id="adminList"></div>
   
@@ -398,7 +398,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Sarabun',sans-serif;backgroun
   <div style="font-size:11px;color:var(--gr);margin-bottom:10px;line-height:1.5">กดที่ช่องประเภทป้ายเพื่ออัปโหลดรูปถ่ายจริง — รูปจะนำไปแสดงในหน้าจอ Popup แจ้งเตือนแทนกราฟิกเวกเตอร์ปกติ</div>
   <div id="signUploadGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px"></div>
   
-  <div class="sec-t">นำเข้าข้อมูล (Import)</div>
+  <div class="sec-t">นำเข้าข้อมูล (Import JSON)</div>
   <div class="import-area">
     <textarea class="admin-ta" id="importJson" placeholder='[{"id":0,"name":"..."}]' style="min-height:70px;font-size:11px;font-family:monospace"></textarea>
     <button class="admin-save" onclick="importData()" style="width:100%;margin-top:7px;padding:9px;font-size:13px">📥 Import</button>
@@ -416,6 +416,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Sarabun',sans-serif;backgroun
       <div class="wave"><span></span><span></span><span></span><span></span></div>
       <div class="modal-speak-t" id="mSpeakTxt"></div>
     </div>
+    <div class="modal-rules" id="mRules" style="display:none"></div>
     <div class="modal-actions">
       <button class="modal-btn-ok" onclick="closeAlert()">✓ รับทราบ (ปิดอัตโนมัติ)</button>
     </div>
@@ -464,7 +465,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Sarabun',sans-serif;backgroun
         <input class="admin-input" id="fLat" placeholder="Latitude" type="number" step="0.00001">
         <input class="admin-input" id="fLng" placeholder="Longitude" type="number" step="0.00001">
       </div>
-      <button class="admin-gps-btn" onclick="useMyGPS()">📍 ใช้ GPS ปัจจุบัน</button>
+      <button class="admin-input" onclick="useMyGPS()" style="background:var(--bg);margin-top:5px;cursor:pointer;font-weight:600">📍 ใช้ GPS ปัจจุบัน</button>
     </div>
     <div class="admin-field"><label>แจ้งเตือนอัตโนมัติ</label>
       <select class="admin-sel" id="fAlert"><option value="true">✅ มี</option><option value="false">❌ ไม่มี</option></select>
@@ -495,7 +496,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Sarabun',sans-serif;backgroun
     <input type="hidden" id="reEditId">
     <div class="admin-row2">
       <div class="admin-field"><label>Route ID *</label><input class="admin-input" id="reRouteId" placeholder="R01" style="font-family:monospace;text-transform:uppercase"></div>
-      <div class="admin-field"><label>สี</label><input type="color" class="admin-input" id="reColor" value="#BA7517" style="padding:3px;height:38px"></div>
+      <div class="admin-field"><label>สีเส้นทางบนแผนที่</label><input type="color" class="admin-input" id="reColor" value="#BA7517" style="padding:3px;height:38px"></div>
     </div>
     <div class="admin-field"><label>ชื่อเส้นทาง *</label><input class="admin-input" id="reName" placeholder="เช่น ศูนย์ประจักษ์ → เกษตรผล"></div>
     <div class="admin-row2">
@@ -503,15 +504,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Sarabun',sans-serif;backgroun
       <div class="admin-field"><label>ปลายทาง</label><input class="admin-input" id="reDest" placeholder="โรงงานน้ำตาลเกษตรผล"></div>
     </div>
     <div class="admin-row2">
-      <div class="admin-field"><label>ระยะทาง (กม.)</label><input class="admin-input" id="reDist" type="number" step="0.01"></div>
+      <div class="admin-field"><label>ระยะทางรวม (กม.)</label><input class="admin-input" id="reDist" type="number" step="0.01"></div>
       <div class="admin-field"><label>สถานะ</label>
         <select class="admin-sel" id="reActive"><option value="true">✅ พร้อมใช้</option><option value="false">❌ ปิด</option></select>
       </div>
     </div>
-    <div class="admin-field"><label>บันทึก</label><textarea class="admin-ta" id="reNotes"></textarea></div>
+    <div class="admin-field"><label>บันทึก / มาตรการความปลอดภัยของเส้นทาง</label><textarea class="admin-ta" id="reNotes" placeholder="เช่น จำกัดความเร็วรถพ่วง 60 กม./ชม., จุดเฝ้าระวังช่วงเทศกาล"></textarea></div>
     <div class="admin-btn-row">
       <button class="admin-del" id="reDelBtn" onclick="deleteRoute()" style="display:none">🗑️ ลบ</button>
-      <button class="admin-save" onclick="saveRouteEdit()">💾 บันทึก</button>
+      <button class="admin-save" onclick="saveRouteEdit()">💾 บันทึกเส้นทาง</button>
     </div>
   </div>
 </div>
@@ -693,32 +694,23 @@ function saveNewSignType() {
   if (!label) { alert("กรุณาระบุชื่อป้ายเตือนความเสี่ยงภาษาไทย"); return; }
   
   var rawId = "cst_" + Date.now();
-  
   customSignTypes[rawId] = { label: label, code: "Custom" };
   localStorage.setItem('kspCustomSigns', JSON.stringify(customSignTypes));
   
   loadCustomSignTypes();
   renderSignUploadGrid();
   closeAddSignType();
-  
   document.getElementById('newSignLabel').value = "";
   showToast("➕ เพิ่มกล่องอัปโหลดป้ายใหม่สำเร็จ!");
 }
 
 // ===== DATA SYSTEM MODELS =====
 var defaultRoutes = [
-  { id: "R01", name: "ศูนย์ประจักษ์ อุดรธานี → โรงงานน้ำตาลเกษตรผล", origin: "อุดรธานี", dest: "กุมภวาปี", distance: 42.5, color: "#BA7517", active: true, notes: "เส้นทางหลักขนส่งน้ำตาล" },
-  { id: "R02", name: "โรงงานน้ำตาลเกษตรผล → คลังสินค้าขอนแก่น", origin: "กุมภวาปี", dest: "ขอนแก่น", distance: 78.2, color: "#185FA5", active: true, notes: "เส้นทางมิตรภาพเฝ้าระวัง" }
+  { id: "R01", name: "ศูนย์ประจักษ์ อุดรธานี → โรงงานน้ำตาลเกษตรผล", origin: "อุดรธานี", dest: "กุมภวาปี", distance: 42.5, color: "#BA7517", active: true, notes: "เส้นทางหลักขนส่งน้ำตาล จำกัดความเร็วสูงสุดรถพ่วงไม่เกิน 60 กม./ชม." }
 ];
 
 var defaultCheckpoints = [
-  { id: 0, routeId: "R01", km: "0.0 กม.", name: "จุดเริ่มต้น: ศูนย์ประจักษ์ อุดรธานี", type: "start", emoji: "🏢", lat: 17.4068, lng: 102.7996, alert: false, title: "", desc: "", speak: "" },
-  { id: 1, routeId: "R01", km: "12.4 กม.", name: "โค้งหักศอกหนองประจักษ์", type: "curve", emoji: "⚠️", lat: 17.3185, lng: 102.8250, alert: true, title: "ทางโค้งอันตรายข้างหน้า", desc: "โค้งหักศอกทัศนวิสัยจำกัด ให้ลดความเร็วลงเหลือ 40 กม./ชม.", speak: "ระวัง ทางโค้งหักศอกข้างหน้า ลดความเร็วเหลือ 40 กิโลเมตรต่อชั่วโมง", rules: ["ลดความเร็วเหลือ 40 กม./ชม.", "ห้ามแซงเด็ดขาดในทางโค้ง"] },
-  { id: 2, routeId: "R01", km: "18.1 กม.", name: "ทางแคบสะพานห้วยสามพาด", type: "narrow", emoji: "🌉", lat: 17.2240, lng: 102.8630, alert: true, title: "สะพานแคบ บีบช่องจราจร", desc: "สะพานข้างหน้ามีความกว้างจำกัด รถบรรทุกหนักโปรดระวังการสวนเลน", speak: "ข้างหน้าสะพานแคบ ระวังรถสวนเลน ชะลอความเร็ว", rules: ["ชะลอความเร็วและประเมินรถสวน", "ห้ามขับเบียดหรือแซงบนสะพาน"] },
-  { id: 3, routeId: "R01", km: "25.7 กม.", name: "สี่แยกชุมชนพันดอน (เสี่ยงสูง)", type: "junction", emoji: "🚦", lat: 17.1190, lng: 102.9320, alert: true, title: "สี่แยกเขตชุมชนพันดอน", desc: "จุดเสี่ยงอุบัติเหตุสูง มีรถตัดหน้าและคนข้ามถนนหนาแน่น", speak: "เข้าเขตชุมชนพันดอน ระวังทางแยกและรถตัดหน้า เตรียมเหยียบเบรก", rules: ["ลดความเร็วเหลือ 50 กม./ชม.", "เพิ่มความระมัดระวังรถจักรยานยนต์"] },
-  { id: 4, routeId: "R01", km: "31.2 กม.", name: "ทางลงเนินชันห้วยเกิ้ง (5%)", type: "downhill", emoji: "⛰️", lat: 17.0620, lng: 102.9680, alert: true, title: "ทางลงเนินลาดชัน ยาว 1 กม.", desc: "เนินมีความลาดชัน 5% รถบรรทุกหนักห้ามใช้เกียร์ว่างเด็ดขาด", speak: "ทางลงเนินชัน ยาว 1 กิโลเมตร ห้ามใช้เกียร์ว่าง ให้เปลี่ยนเป็นเกียร์ต่ำ", rules: ["ใช้เกียร์ต่ำ ห้ามใช้เกียร์ว่าง", "รักษาระยะห่างจากคันหน้า 100 เมตร"] },
-  { id: 5, routeId: "R01", km: "35.8 กม.", name: "ทางร่วมมิตรภาพ บลูไดมอนด์", type: "merge", emoji: "🛣️", lat: 17.0150, lng: 102.9770, alert: true, title: "จุดทางร่วมหลัก ถนนมิตรภาพ", desc: "รถบรรทุกจากทางรองวิ่งมาร่วมกับทางหลัก มองกระจกขวาให้ชัดเจน", speak: "จุดทางร่วมถนนมิตรภาพ ระวังรถทางตรง และให้สัญญาณไฟเลี้ยวขวา", rules: ["เปิดสัญญาณไฟเลี้ยวล่วงหน้า 50 เมตร", "ให้สิทธิ์รถทางตรงไปก่อน"] },
-  { id: 6, routeId: "R01", km: "42.5 กม.", name: "ปลายทาง: โรงงานน้ำตาลเกษตรผล", type: "arrive", emoji: "🏭", lat: 16.9455, lng: 102.9642, alert: true, title: "ยินดีต้อนรับสู่ น้ำตาลเกษตรผล", desc: "พื้นที่โรงงาน จำกัดความเร็วไม่เกิน 20 กม./ชม. สวมใส่ PPE ครบถ้วน", speak: "ถึงจุดหมาย โรงงานน้ำตาลเกษตรผล จำกัดความเร็ว 20 กิโลเมตรต่อชั่วโมง และสวมหมวกเซฟตี้", rules: ["จำกัดความเร็วในโรงงาน 20 กม./ชม.", "สวมใส่ หมวกนิรภัย และ รองเท้าเซฟตี้ เสมอ"] }
+  { id: 0, routeId: "R01", km: "0 กม.", name: "ศูนย์ประจักษ์", type: "start", emoji: "🏢", lat: 17.5823, lng: 102.6012, alert: false, title: "", desc: "", speak: "" }
 ];
 
 var routes = [], checkpoints = [], historyLogs = [];
@@ -774,7 +766,7 @@ function loadAllData() {
     historyLogs = h ? JSON.parse(h) : [];
     if (p) adminPin = p;
     if (cl) {
-      var co = JSON.parse(cl); cloudUrl = co.url||""; cloudDriver = co.driver||"คนขับรถบรรทุก KSP"; cloudAutoSync = +co.autoSync||0;
+      var co = JSON.parse(cl); cloudUrl = co.url||""; cloudDriver = co.driver||"นายจตุพล นามพุทธา"; cloudAutoSync = +co.autoSync||0;
       if(document.getElementById('cloudUrl')) document.getElementById('cloudUrl').value = cloudUrl; 
       if(document.getElementById('cloudDriver')) document.getElementById('cloudDriver').value = cloudDriver; 
       if(document.getElementById('cloudAutoSync')) document.getElementById('cloudAutoSync').value = cloudAutoSync;
@@ -844,7 +836,7 @@ function renderMapElements() {
     mapCMarkers.push(poly);
   }
 
-  var startPos = pathCoords[0] || [17.4068, 102.7996];
+  var startPos = pathCoords[0] || [17.5823, 102.6012];
   var truckIcon = L.divIcon({
     className: '',
     html: '<div class="truck-pulse" id="mapTruckEl"><span class="truck-marker">🚛</span></div>',
@@ -1158,19 +1150,25 @@ function renderRouteLists() {
     var activeClass = r.id === currentRouteId ? "current" : "";
     if (!r.active) activeClass += " inactive";
 
+    // ปรับการดึงตัวแปรและเพิ่มการแสดงฟิลด์ข้อมูลให้ครอบคลุม ไม่เกิดปัญหา undefined
+    var originText = r.origin || "ไม่ระบุ";
+    var destText = r.dest || "ไม่ระบุ";
+    var distanceText = r.distance || r.dist || "0";
+    var notesText = r.notes || "ไม่มีบันทึกมาตรการความปลอดภัยพิเศษสำหรับเส้นทางนี้";
+
     var html = '<div class="route-card ' + activeClass + '" onclick="selectRoute(\'' + r.id + '\')">' +
       '<div class="route-card-head">' +
         '<div class="route-card-id" style="background:' + (r.color||'var(--or)') + '">' + r.id + '</div>' +
         '<div class="route-card-body">' +
           '<div class="route-card-name">' + r.name + '</div>' +
-          '<div class="route-card-meta">ต้นทาง: ' + r.origin + ' ➔ ปลายทาง: ' + r.dest + '</div>' +
+          '<div class="route-card-meta"><b>📍 เส้นทาง:</b> ' + originText + ' ➔ ' + destText + '<br><b>📝 หมายเหตุเซฟตี้:</b> ' + notesText + '</div>' +
         '</div>' +
         (r.id === currentRouteId ? '<div class="route-card-tick">✓</div>' : '') +
       '</div>' +
       '<div class="route-card-foot">' +
-        '<div class="route-stat">ระยะทาง <b>' + r.distance + ' กม.</b></div>' +
-        '<div class="route-stat">จุดเสี่ยง <b>' + totalCps + ' จุด</b></div>' +
-        '<div class="route-status ' + (r.active?'on':'off') + '">' + (r.active?'พร้อมใช้':'ปิด') + '</div>' +
+        '<div class="route-stat">ระยะทางรวม: <b>' + distanceText + ' กม.</b></div>' +
+        '<div class="route-stat">จุดเสี่ยงเฝ้าระวัง: <b>' + totalCps + ' จุด</b></div>' +
+        '<div class="route-status ' + (r.active?'on':'off') + '">' + (r.active?'พร้อมใช้งาน':'ปิดใช้งาน') + '</div>' +
       '</div>' +
     '</div>';
     list.insertAdjacentHTML('beforeend', html);
@@ -1179,10 +1177,10 @@ function renderRouteLists() {
       var aHtml = '<div class="admin-route-row" onclick="openRouteEdit(\'' + r.id + '\')">' +
         '<div class="admin-route-id" style="background:' + (r.color||'var(--or)') + '">' + r.id + '</div>' +
         '<div style="flex:1;min-width:0">' +
-          '<div style="font-size:13px;font-weight:600;color:var(--dk);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + r.name + '</div>' +
-          '<div style="font-size:10px;color:var(--gr)">' + r.distance + ' กม. · ' + totalCps + ' เช็กพอยต์</div>' +
+          '<div style="font-size:13px;font-weight:700;color:var(--dk);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + r.name + '</div>' +
+          '<div style="font-size:11px;color:var(--gr);margin-top:2px">ระยะทาง: ' + distanceText + ' กม. · พิกัดเฝ้าระวัง ' + totalCps + ' จุด</div>' +
         '</div>' +
-        '<div style="font-size:12px;color:var(--gr)">⚙️ แก้ไข</div>' +
+        '<div style="font-size:12px;color:var(--bl);font-weight:600">⚙️ แก้ไข</div>' +
       '</div>';
       adminList.insertAdjacentHTML('beforeend', aHtml);
     }
@@ -1200,8 +1198,6 @@ function selectRoute(id) {
   if (lMap) { renderMapElements(); centerMap(); }
   showToast('🛣️ เปลี่ยนเส้นทางเป็น ' + id);
   goScreen('map');
-  
-  // โหลดพิกัดของเส้นทางใหม่แบบ Real-Time จากคลาวด์อัตโนมัติ
   cloudPull();
 }
 
@@ -1390,7 +1386,7 @@ function openRouteEdit(id) {
     var r = routes.find(function(rt){return rt.id === id;}); if (!r) return;
     document.getElementById('reEditId').value = r.id; document.getElementById('reRouteId').value = r.id;
     document.getElementById('reName').value = r.name; document.getElementById('reOrigin').value = r.origin||"";
-    document.getElementById('reDest').value = r.dest||""; document.getElementById('reDist').value = r.distance||"";
+    document.getElementById('reDest').value = r.dest||""; document.getElementById('reDist').value = r.distance || r.dist || "";
     document.getElementById('reColor').value = r.color || "#BA7517";
     document.getElementById('reActive').value = r.active ? "true" : "false";
     document.getElementById('reNotes').value = r.notes || "";
@@ -1520,7 +1516,6 @@ function uploadSignImage(type, input) {
     reader.readAsDataURL(input.files[0]);
   }
 }
-function resetAllSignImages() { if (confirm("ต้องการล้างรูปภาพถ่ายจริงทั้งหมด?")) { signImages={}; saveSignImages(); renderSignUploadGrid(); } }
 
 // ===== EXPORT / IMPORT JSON =====
 function exportData() {
@@ -1546,7 +1541,7 @@ function openCloudConfig() { document.getElementById('cloudModal').style.display
 function closeCloudConfig() { document.getElementById('cloudModal').style.display = "none"; }
 function saveCloudConfig() {
   cloudUrl = document.getElementById('cloudUrl').value.trim();
-  cloudDriver = document.getElementById('cloudDriver').value.trim() || "คนขับรถบรรทุก KSP";
+  cloudDriver = document.getElementById('cloudDriver').value.trim() || "นายจตุพล นามพุทธา";
   cloudAutoSync = parseInt(document.getElementById('cloudAutoSync').value) || 0;
   
   localStorage.setItem('kspCloud', JSON.stringify({ url: cloudUrl, driver: cloudDriver, autoSync: cloudAutoSync }));
@@ -1653,7 +1648,6 @@ function testAlert(type, btnId) {
   };
   
   var speakText = mockData[type] || "ระบบตรวจพบความเสี่ยงจำลอง";
-  
   if (ttsOn && 'speechSynthesis' in window) {
     var msg = new SpeechSynthesisUtterance(speakText); msg.lang = 'th-TH'; msg.volume = vol;
     window.speechSynthesis.speak(msg);
@@ -1700,12 +1694,10 @@ window.addEventListener('DOMContentLoaded', function() {
   renderRouteLists(); renderCheckpointLists(); renderHistoryList();
   setupCloudIntervalTimer();
   document.body.addEventListener('click', function() { initAudio(); }, { once: true });
-  
-  // โหลดข้อมูลจากคลาวด์เริ่มต้นทันที
   setTimeout(function() { if(getCloudUrl()) cloudPull(); }, 800);
 });
 
-// ===== CLOUD SYNC FUNCTIONS (FIXED) =====
+// ===== CLOUD SYNC FUNCTIONS =====
 var SYNC_LOCK = false;
 
 function getCloudUrl() {
@@ -1724,7 +1716,7 @@ function loadCloudUrl() {
   return saved;
 }
 
-// Push checkpoints TO Google Sheet
+// Push TO Google Sheet
 function syncPushCheckpoints(cps, routeId, onDone) {
   var url = getCloudUrl();
   if(!url) { showToast('❌ ยังไม่ได้ตั้งค่า URL'); return; }
@@ -1735,7 +1727,7 @@ function syncPushCheckpoints(cps, routeId, onDone) {
     action: 'saveCheckpoints',
     route_id: routeId || 'R01',
     data: cps,
-    user: localStorage.getItem('kspDriver') || 'admin'
+    user: cloudDriver
   };
   fetch(url, {
     method: 'POST',
@@ -1764,7 +1756,7 @@ function syncPushCheckpoints(cps, routeId, onDone) {
   });
 }
 
-// Pull checkpoints FROM Google Sheet
+// Pull FROM Google Sheet
 function syncPullCheckpoints(routeId, onDone) {
   var url = getCloudUrl();
   if(!url) { showToast('❌ ยังไม่ได้ตั้งค่า URL'); return; }
@@ -1816,7 +1808,6 @@ function syncPullCheckpoints(routeId, onDone) {
         };
       });
 
-      // ล้างข้อมูลเก่าของกลุ่มเส้นทางนี้ออกก่อน แล้วแทนที่เพื่อป้องกันข้อมูลซ้ำ (Prevent Duplication)
       checkpoints = checkpoints.filter(function(c){ return c.routeId !== targetRoute; });
       checkpoints = checkpoints.concat(mapped);
       
@@ -1825,11 +1816,13 @@ function syncPullCheckpoints(routeId, onDone) {
       localStorage.setItem('kspCps', JSON.stringify(checkpoints));
       
       var el = document.getElementById('cloudLastSync');
-      if(el) el.textContent = 'ดึงข้อมูล: ' + now + ' (' + mapped.length + ' จุด)';
+      if(el) el.textContent = 'ดึงข้อมูลพิกัดสำเร็จ: ' + now + ' (' + mapped.length + ' จุด)';
       
       renderCheckpointLists();
       if(lMap) renderMapElements();
-      renderRouteLists();
+      
+      // หลังจากดึง Checkpoints แล้ว ให้ทำการดึงและอัปเดตรายละเอียดเส้นทางควบคู่ไปด้วยกันทันที
+      syncPullRoutes();
       
       showToast('✅ ดึงข้อมูลสำเร็จ ' + mapped.length + ' จุด');
       if(onDone) onDone(mapped);
@@ -1844,51 +1837,37 @@ function syncPullCheckpoints(routeId, onDone) {
   });
 }
 
-// Pull ALL routes list
+// Pull Routes list และกระจายค่าป้องกันการเกิด undefined
 function syncPullRoutes(onDone) {
   var url = getCloudUrl();
-  if(!url) { showToast('❌ ยังไม่ได้ตั้งค่า URL'); return; }
-  showToast('📥 กำลังดึงรายการเส้นทาง...');
+  if(!url) return;
   fetch(url + '?action=getRoutes')
   .then(function(r){ return r.json(); })
   .then(function(d){
-    var rList = (d && d.data) ? d.data : d;
+    var rList = (d && d.data) ? d.data : (Array.isArray(d) ? d : null);
     if(rList && rList.length > 0) {
-      localStorage.setItem('kspRoutes', JSON.stringify(rList));
-      routes = rList;
-      showToast('✅ ดึงเส้นทาง ' + rList.length + ' เส้น');
+      // ดัดแปลงเพื่อแปลงค่าตัวแปรจาก Apps Script (เช่น dist หรือ distance) ให้เข้าล็อกของโมเดลหน้าเว็บทั้งหมด
+      var verifiedRoutes = rList.map(function(item) {
+        return {
+          id: item.id || item.route_id || "R01",
+          name: item.name || "ศูนย์ประจักษ์ → เกษตรผล",
+          origin: item.origin || "ไม่ระบุต้นทาง",
+          dest: item.dest || "ไม่ระบุปลายทาง",
+          distance: item.distance || item.dist || 0,
+          color: item.color || "#BA7517",
+          active: item.active === true || item.active === "true" || item.active === "TRUE" || item.active === undefined,
+          notes: item.notes || "ไม่มีบันทึก"
+        };
+      });
+
+      localStorage.setItem('kspRoutes', JSON.stringify(verifiedRoutes));
+      routes = verifiedRoutes;
       renderRouteLists();
-      if(onDone) onDone(rList);
-    } else {
-      showToast('❌ ดึงเส้นทางไม่สำเร็จ');
+      if(onDone) onDone(verifiedRoutes);
     }
   })
-  .catch(function(e){ showToast('❌ ' + e.message); });
+  .catch(function(e){ console.error("Routes Pull Error: ", e.message); });
 }
-
-// Test connection
-function testCloudConnection() {
-  var url = getCloudUrl();
-  if(!url) { showToast('❌ กรุณาใส่ URL ก่อน'); return; }
-  showToast('🔌 กำลังทดสอบ...');
-  fetch(url + '?action=ping')
-  .then(function(r){ return r.json(); })
-  .then(function(d){
-    if(d.ok) showToast('✅ เชื่อมต่อสำเร็จ! ' + (d.message||''));
-    else showToast('❌ ' + (d.error||'ไม่สำเร็จ'));
-  })
-  .catch(function(e){ showToast('❌ ' + e.message); });
-}
-
-// Load saved cloud url on start
-window.addEventListener('DOMContentLoaded', function(){
-  loadCloudUrl();
-  var lastSync = localStorage.getItem('kspLastSync');
-  if(lastSync) {
-    var el = document.getElementById('cloudLastSync');
-    if(el) el.textContent = 'Sync ล่าสุด: ' + lastSync;
-  }
-});
 </script>
 </body>
 </html>
