@@ -607,7 +607,7 @@ function getTrafficSign(type){
   if(type==='curve')return _warn('<path d="M70 82 C56 82 46 76 44 64 C42 52 50 44 50 30 L58 30 C58 44 50 52 52 64 C54 76 64 80 70 80 Z" fill="'+c+'"/><polygon points="50,30 36,22 36,38" fill="'+c+'"/><rect x="44" y="78" width="28" height="8" fill="#FFCC00"/>');
   if(type==='junction')return _warn('<rect x="54" y="22" width="12" height="76" rx="4" fill="'+c+'"/><rect x="22" y="54" width="76" height="12" rx="4" fill="'+c+'"/><polygon points="60,14 50,28 70,28" fill="'+c+'"/><polygon points="106,60 92,50 92,70" fill="'+c+'"/><polygon points="14,60 28,50 28,70" fill="'+c+'"/>');
   if(type==='merge')return _warn('<rect x="54" y="22" width="12" height="76" rx="4" fill="'+c+'"/><path d="M24 56 Q24 66 54 66 L54 54 Q36 54 36 54 Q36 46 24 46 Z" fill="'+c+'"/><polygon points="60,14 50,28 70,28" fill="'+c+'"/><polygon points="60,106 50,92 70,92" fill="'+c+'"/><polygon points="16,51 30,44 30,58" fill="'+c+'"/>');
-  if(type==='narrow')return _warn('<rect x="54" y="22" width="12" height="76" rx="4" fill="'+c+'"/><polygon points="54,58 28,34 38,28 60,50 82,28 92,34 66,58" fill="'+c+'"/><polygon points="60,14 50,28 70,28" fill="'+c+'"/>');
+  if(type==='narrow')return _warn('<rect x="54" y="22" width="12" height="76" rx="4" fill="'+c+'"/><polygon points="54,58 28,34 38,28 60;50 82,28 92,34 66,58" fill="'+c+'"/><polygon points="60,14 50,28 70,28" fill="'+c+'"/>');
   if(type==='downhill')return _warn('<path d="M26 34 L88 80 L88 92 L26 46 Z" fill="'+c+'"/><rect x="26" y="82" width="62" height="10" rx="4" fill="'+c+'"/><polygon points="88,76 100,90 76,90" fill="'+c+'"/><text x="32" y="66" font-family="Arial Black,Arial,sans-serif" font-size="17" font-weight="900" fill="'+c+'">5%</text>');
   if(type==='community')return _warn('<circle cx="52" cy="28" r="8" fill="'+c+'"/><path d="M52 36 L44 54 L36 70" stroke="'+c+'" stroke-width="9" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M52 36 L56 56 L64 74" stroke="'+c+'" stroke-width="9" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M44 46 L64 46" stroke="'+c+'" stroke-width="9" fill="none" stroke-linecap="round"/><circle cx="74" cy="26" r="7" fill="'+c+'"/><path d="M74 33 L68 50 L62 64" stroke="'+c+'" stroke-width="8" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M74 33 L80 50 L86 64" stroke="'+c+'" stroke-width="8" fill="none" stroke-linecap="round" stroke-linejoin="round"/><rect x="26" y="87" width="68" height="9" rx="4" fill="'+c+'"/>');
   if(type==='danger'||type==='warn')return _warn('<rect x="55" y="22" width="10" height="48" rx="5" fill="'+c+'"/><circle cx="60" cy="84" r="8" fill="'+c+'"/>');
@@ -692,7 +692,7 @@ var defaultCheckpoints = [
 ];
 
 var routes = [], checkpoints = [], historyLogs = [];
-var currentRouteId = "";
+var currentRouteId = "R01";
 var currentScreen = "routes";
 var adminUnlocked = false;
 var adminPin = "1234";
@@ -1161,6 +1161,7 @@ function renderRouteLists() {
   var curR = routes.find(function(r){return r.id === currentRouteId;});
   if (curR && document.getElementById('tbRouteName')) document.getElementById('tbRouteName').textContent = curR.id + ": " + curR.name;
 }
+
 function selectRoute(id) {
   currentRouteId = id;
   localStorage.setItem('kspCurrentRouteId', id);
@@ -1169,26 +1170,11 @@ function selectRoute(id) {
   if (lMap) { renderMapElements(); centerMap(); }
   showToast('🛣️ เปลี่ยนเส้นทางเป็น ' + id);
   goScreen('map');
-  // ดึงข้อมูลจุดของเส้นทางนี้จาก Cloud อัตโนมัติ
-  var url = getCloudUrl ? getCloudUrl() : '';
-  if(url) {
-    showToast('📥 กำลังโหลดจุดอันตรายของเส้นทาง...');
-    syncPullCheckpoints(id, function(data){
-      if(!data || data.length===0) {
-        showToast('⚠️ ยังไม่มีจุดอันตรายใน Cloud — เพิ่มได้ในแท็บจัดการ');
-        return;
-      }
-      data.forEach(function(c){ c.routeId = id; });
-      // Merge into checkpoints
-      checkpoints = checkpoints.filter(function(c){ return c.routeId !== id; });
-      checkpoints = checkpoints.concat(data);
-      if(typeof saveCpsData==='function') saveCpsData();
-      renderCheckpointLists();
-      if(lMap) renderMapElements();
-      showToast('✅ โหลด ' + data.length + ' จุดสำเร็จ');
-    });
-  }
+  
+  // โหลดพิกัดของเส้นทางใหม่แบบ Real-Time จากคลาวด์อัตโนมัติ
+  cloudPull();
 }
+
 function renderCheckpointLists() {
   var list = document.getElementById('cpList'), adminList = document.getElementById('adminList');
   if(!list) return;
@@ -1534,6 +1520,7 @@ function saveCloudConfig() {
   cloudAutoSync = parseInt(document.getElementById('cloudAutoSync').value) || 0;
   
   localStorage.setItem('kspCloud', JSON.stringify({ url: cloudUrl, driver: cloudDriver, autoSync: cloudAutoSync }));
+  saveCloudUrl(cloudUrl);
   closeCloudConfig();
   
   var statusEl = document.getElementById('cloudStatus');
@@ -1551,9 +1538,8 @@ function setupCloudIntervalTimer() {
 }
 function cloudPush() {
   var url = getCloudUrl();
-  if(!url) { showToast('❌ ยังไม่ได้ตั้งค่า URL'); openCloudConfig && openCloudConfig(); return; }
-  var cps = [];
-  try { var d=localStorage.getItem('kspCPS'); if(d) cps=JSON.parse(d); } catch(e){}
+  if(!url) { showToast('❌ ยังไม่ได้ตั้งค่า URL'); if(typeof openCloudConfig === 'function') openCloudConfig(); return; }
+  var cps = checkpoints.filter(function(c){ return c.routeId === currentRouteId; });
   if(!cps.length) { showToast('⚠️ ไม่มีข้อมูลจุดอันตรายที่จะอัปโหลด'); return; }
   var pBtn=document.getElementById('cloudPushBtn');
   if(pBtn){pBtn.textContent='⏳...';pBtn.disabled=true;}
@@ -1565,42 +1551,25 @@ function cloudPush() {
 function cloudPull() {
   var pBtn=document.getElementById('cloudPullBtn');
   if(pBtn){pBtn.textContent='⏳...';pBtn.disabled=true;}
-  // ดึงโดยไม่ filter route_id เพื่อให้ได้ข้อมูลทั้งหมดจาก Sheet
-  var rid = (typeof currentRouteId !== 'undefined' && currentRouteId) ? currentRouteId : null;
+  var rid = currentRouteId || 'R01';
   syncPullCheckpoints(rid, function(data){
     if(pBtn){pBtn.textContent='📥 ดึงข้อมูล';pBtn.disabled=false;}
-    if(!data) return;
-    if(data.length===0){showToast('⚠️ ไม่พบข้อมูลใน Cloud');return;}
-    // โหลดเข้า app state
-    if(typeof checkpoints !== 'undefined') {
-      // ถ้ามี routeId ให้ merge, ถ้าไม่มีให้ replace ทั้งหมด
-      var hasRouteId = data.some(function(c){ return c.routeId && c.routeId !== 'R01'; });
-      if(!hasRouteId) {
-        // Sheet ไม่มี multi-route — set routeId เป็น currentRoute
-        var targetRoute = rid || (typeof currentRouteId !== 'undefined' ? currentRouteId : 'R01');
-        data.forEach(function(c){ c.routeId = targetRoute; });
-      }
-      // Replace checkpoints ของ route นี้
-      var targetRid = data[0].routeId;
-      checkpoints = checkpoints.filter(function(c){ return c.routeId !== targetRid; });
-      checkpoints = checkpoints.concat(data);
-      if(typeof saveCpsData === 'function') saveCpsData();
-    }
-    // Refresh UI
-    if(typeof renderCheckpointLists === 'function') renderCheckpointLists();
-    if(typeof renderMapElements === 'function') renderMapElements();
-    if(typeof renderRouteLists === 'function') renderRouteLists();
-    if(typeof renderSignUploadGrid === 'function') renderSignUploadGrid();
-    showToast('✅ โหลด '+data.length+' จุดจาก Cloud สำเร็จ');
   });
 }
 
-function cloudPullRoutes() { cloudPull(); }
+function cloudPullRoutes() { 
+  syncPullRoutes(function(data){
+    if(data && data.length > 0) {
+      renderRouteLists();
+    }
+  });
+}
 function cloudTest() {
   if (!document.getElementById('cloudUrl').value.trim()) { alert("โปรดกรอกลิงก์สคริปต์ก่อนทดสอบ"); return; }
   showToast("🔌 กำลัง Ping ทดสอบ...");
   fetch(document.getElementById('cloudUrl').value.trim() + "?action=ping")
-    .then(function() { alert("🎯 การส่งสัญญาณทดสอบสำเร็จ (Ping Received)"); })
+    .then(function(r) { return r.json(); })
+    .then(function(d) { alert("🎯 " + (d.message || "การส่งสัญญาณทดสอบสำเร็จ")); })
     .catch(function() { alert("📡 สื่อสารสำเร็จ สามารถใช้งานปุ่มผลักข้อมูลได้ปกติ"); });
 }
 
@@ -1701,6 +1670,9 @@ window.addEventListener('DOMContentLoaded', function() {
   renderRouteLists(); renderCheckpointLists(); renderHistoryList();
   setupCloudIntervalTimer();
   document.body.addEventListener('click', function() { initAudio(); }, { once: true });
+  
+  // โหลดข้อมูลจากคลาวด์เริ่มต้นทันที
+  setTimeout(function() { if(getCloudUrl()) cloudPull(); }, 800);
 });
 
 // ===== CLOUD SYNC FUNCTIONS (FIXED) =====
@@ -1743,7 +1715,7 @@ function syncPushCheckpoints(cps, routeId, onDone) {
   .then(function(r){ return r.json(); })
   .then(function(d){
     SYNC_LOCK = false;
-    if(d.ok) {
+    if(d.ok || d.saved) {
       var now = new Date().toLocaleString('th-TH');
       localStorage.setItem('kspLastSync', now);
       var el = document.getElementById('cloudLastSync');
@@ -1767,13 +1739,18 @@ function syncPullCheckpoints(routeId, onDone) {
   var url = getCloudUrl();
   if(!url) { showToast('❌ ยังไม่ได้ตั้งค่า URL'); return; }
   showToast('📥 กำลังดึงข้อมูลจาก Cloud...');
-  // ถ้าไม่มี route_id ให้ดึงทั้งหมด
-  var pullUrl = url + '?action=getCheckpoints' + (routeId ? '&route_id=' + encodeURIComponent(routeId) : '');
+  var targetRoute = routeId || currentRouteId || 'R01';
+  var pullUrl = url + '?action=getCheckpoints&route_id=' + encodeURIComponent(targetRoute);
+  
   fetch(pullUrl)
   .then(function(r){ return r.json(); })
   .then(function(d){
-    if(d.ok && d.data && d.data.length > 0) {
-      // ===== TRANSFORM: แปลง field จาก Sheet → App format =====
+    var rawList = null;
+    if (d && Array.isArray(d)) rawList = d;
+    else if (d && d.data && Array.isArray(d.data)) rawList = d.data;
+    else if (d && d.ok && d.data) rawList = d.data;
+
+    if(rawList && rawList.length > 0) {
       var TYPE_DEFAULTS = {
         'curve':     {col:'#E24B4A', bg:'#FCEBEB', emoji:'⚠️',  label:'ทางโค้ง'},
         'junction':  {col:'#BA7517', bg:'#FAEEDA', emoji:'✚',   label:'ทางแยก'},
@@ -1786,41 +1763,49 @@ function syncPullCheckpoints(routeId, onDone) {
         'start':     {col:'#1D9E75', bg:'#E1F5EE', emoji:'📍',  label:'จุดเริ่มต้น'},
         'arrive':    {col:'#1D9E75', bg:'#E1F5EE', emoji:'✅',  label:'ปลายทาง'},
       };
-      var mapped = d.data.map(function(cp, idx) {
+      
+      var mapped = rawList.map(function(cp, idx) {
         var t = cp.type || 'danger';
         var def = TYPE_DEFAULTS[t] || TYPE_DEFAULTS['danger'];
         return {
-          id:       cp.id !== undefined ? cp.id : idx,
-          routeId:  cp.route_id || routeId || 'R01', // snake_case → camelCase
-          name:     cp.name || '',
-          km:       cp.km || String(idx),
-          type:     t,
-          lat:      parseFloat(cp.lat) || 0,
-          lng:      parseFloat(cp.lng) || 0,
-          title:    cp.title || cp.name || '',
-          desc:     cp.desc || '',
-          speak:    cp.speak || '',
-          rules:    Array.isArray(cp.rules) ? cp.rules : [],
-          alert:    cp.alert === true || cp.alert === 'TRUE' || cp.alert === 'true',
-          emoji:    cp.emoji || def.emoji,
-          col:      cp.col  || def.col,
-          bg:       cp.bg   || def.bg,
+          id:      cp.id !== undefined ? parseInt(cp.id) : idx,
+          routeId: cp.routeId || cp.route_id || targetRoute, 
+          name:    cp.name || '',
+          km:      cp.km || String(idx) + ' กม.',
+          type:    t,
+          lat:     parseFloat(cp.lat) || 0,
+          lng:     parseFloat(cp.lng) || 0,
+          title:   cp.title || cp.name || '',
+          desc:    cp.desc || '',
+          speak:   cp.speak || '',
+          rules:   Array.isArray(cp.rules) ? cp.rules : (cp.rules ? String(cp.rules).split(',') : []),
+          alert:   cp.alert === true || cp.alert === 'TRUE' || cp.alert === 'true',
+          emoji:   cp.emoji || def.emoji,
+          col:     cp.col  || def.col,
+          bg:      cp.bg   || def.bg,
         };
       });
-      // ==========================================================
+
+      // ล้างข้อมูลเฉพาะของ Route นั้นแล้วเซ็ตแทนที่ (Prevent Double Duplicate)
+      checkpoints = checkpoints.filter(function(c){ return c.routeId !== targetRoute; });
+      checkpoints = checkpoints.concat(mapped);
+      
       var now = new Date().toLocaleString('th-TH');
       localStorage.setItem('kspLastSync', now);
-      localStorage.setItem('kspCps', JSON.stringify(mapped));
+      localStorage.setItem('kspCps', JSON.stringify(checkpoints));
+      
       var el = document.getElementById('cloudLastSync');
       if(el) el.textContent = 'ดึงข้อมูล: ' + now + ' (' + mapped.length + ' จุด)';
+      
+      renderCheckpointLists();
+      if(lMap) renderMapElements();
+      renderRouteLists();
+      
       showToast('✅ ดึงข้อมูลสำเร็จ ' + mapped.length + ' จุด');
       if(onDone) onDone(mapped);
-    } else if(d.data && d.data.length === 0) {
-      showToast('⚠️ ไม่พบข้อมูลใน Cloud');
-      if(onDone) onDone([]);
     } else {
-      showToast('❌ ' + (d.error||'ดึงข้อมูลไม่สำเร็จ'));
-      if(onDone) onDone(null);
+      showToast('⚠️ ไม่พบพิกัดในคลาวด์สำหรับเส้นทางนี้');
+      if(onDone) onDone([]);
     }
   })
   .catch(function(e){
@@ -1837,12 +1822,15 @@ function syncPullRoutes(onDone) {
   fetch(url + '?action=getRoutes')
   .then(function(r){ return r.json(); })
   .then(function(d){
-    if(d.ok && d.data) {
-      localStorage.setItem('kspRoutes', JSON.stringify(d.data));
-      showToast('✅ ดึงเส้นทาง ' + d.data.length + ' เส้น');
-      if(onDone) onDone(d.data);
+    var rList = (d && d.data) ? d.data : d;
+    if(rList && rList.length > 0) {
+      localStorage.setItem('kspRoutes', JSON.stringify(rList));
+      routes = rList;
+      showToast('✅ ดึงเส้นทาง ' + rList.length + ' เส้น');
+      renderRouteLists();
+      if(onDone) onDone(rList);
     } else {
-      showToast('❌ ' + (d.error||'ดึงเส้นทางไม่สำเร็จ'));
+      showToast('❌ ดึงเส้นทางไม่สำเร็จ');
     }
   })
   .catch(function(e){ showToast('❌ ' + e.message); });
