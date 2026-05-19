@@ -384,12 +384,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Sarabun',sans-serif;backgroun
   </div>
   <div id="adminRouteList"></div>
   
-  <button class="admin-add-btn" onclick="openAdd()">+ เพิ่มจุดอันตรายใหม่</button>
-  <div class="sec-t" style="display:flex;align-items:center;justify-content:space-between">
-    <span>จุดตรวจสอบ</span>
-    <button onclick="exportData()" style="font-size:11px;padding:4px 9px;border-radius:10px;background:var(--bl2);color:var(--bl3);border:none;cursor:pointer;font-weight:600">📤 Export</button>
-  </div>
-  <div id="adminList"></div>
+  <!-- จุดอันตรายย้ายไปอยู่ใน Route Edit Modal -->
   
   <div class="sec-t" style="display:flex;align-items:center;justify-content:space-between;margin-top:14px">
     <span>📷 จัดการและอัปโหลดรูปป้ายจราจรจริง</span>
@@ -489,31 +484,53 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Sarabun',sans-serif;backgroun
 <div class="modal-wrap" id="routeEditModal" style="display:none">
   <div class="modal-box">
     <div class="modal-handle"></div>
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-      <div style="font-size:15px;font-weight:600">🛣️ เพิ่ม/แก้ไขเส้นทาง</div>
-      <button onclick="closeRouteEdit()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--gr)">✕</button>
-    </div>
-    <input type="hidden" id="reEditId">
-    <div class="admin-row2">
-      <div class="admin-field"><label>Route ID *</label><input class="admin-input" id="reRouteId" placeholder="R01" style="font-family:monospace;text-transform:uppercase"></div>
-      <div class="admin-field"><label>สี</label><input type="color" class="admin-input" id="reColor" value="#BA7517" style="padding:3px;height:38px"></div>
-    </div>
-    <div class="admin-field"><label>ชื่อเส้นทาง *</label><input class="admin-input" id="reName" placeholder="เช่น ศูนย์ประจักษ์ → เกษตรผล"></div>
-    <div class="admin-row2">
-      <div class="admin-field"><label>ต้นทาง</label><input class="admin-input" id="reOrigin" placeholder="ศูนย์ประจักษ์"></div>
-      <div class="admin-field"><label>ปลายทาง</label><input class="admin-input" id="reDest" placeholder="โรงงานน้ำตาลเกษตรผล"></div>
-    </div>
-    <div class="admin-row2">
-      <div class="admin-field"><label>ระยะทาง (กม.)</label><input class="admin-input" id="reDist" type="number" step="0.01"></div>
-      <div class="admin-field"><label>สถานะ</label>
-        <select class="admin-sel" id="reActive"><option value="true">✅ พร้อมใช้</option><option value="false">❌ ปิด</option></select>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div style="font-size:16px;font-weight:700;color:var(--dk)">🛣️ แก้ไขเส้นทาง</div>
+      <div style="display:flex;gap:7px">
+        <button onclick="exportRouteData()" style="padding:5px 10px;border-radius:var(--r);background:var(--bl2);color:var(--bl3);border:1px solid var(--bl);font-size:11px;font-weight:600;cursor:pointer">📤 Export</button>
+        <button onclick="closeRouteEdit()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--gr)">✕</button>
       </div>
     </div>
-    <div class="admin-field"><label>บันทึก</label><textarea class="admin-ta" id="reNotes"></textarea></div>
-    <div class="admin-btn-row">
-      <button class="admin-del" id="reDelBtn" onclick="deleteRoute()" style="display:none">🗑️ ลบ</button>
-      <button class="admin-save" onclick="saveRouteEdit()">💾 บันทึก</button>
+    <!-- ROUTE INFO -->
+    <div style="background:var(--bg);border-radius:var(--r);padding:12px;margin-bottom:14px">
+      <div style="font-size:11px;font-weight:600;color:var(--gr);margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em">ข้อมูลเส้นทาง</div>
+      <input type="hidden" id="reEditId">
+      <div class="admin-row2">
+        <div class="admin-field"><label>Route ID *</label><input class="admin-input" id="reRouteId" placeholder="R01" style="font-family:monospace;text-transform:uppercase"></div>
+        <div class="admin-field"><label>สี</label><input type="color" class="admin-input" id="reColor" value="#BA7517" style="padding:3px;height:38px"></div>
+      </div>
+      <div class="admin-field"><label>ชื่อเส้นทาง *</label><input class="admin-input" id="reName" placeholder="เช่น ศูนย์ประจักษ์ → เกษตรผล"></div>
+      <div class="admin-row2">
+        <div class="admin-field"><label>ต้นทาง</label><input class="admin-input" id="reOrigin" placeholder="ศูนย์ประจักษ์"></div>
+        <div class="admin-field"><label>ปลายทาง</label><input class="admin-input" id="reDest" placeholder="โรงงานน้ำตาลเกษตรผล"></div>
+      </div>
+      <div class="admin-row2">
+        <div class="admin-field"><label>ระยะทาง (กม.)</label><input class="admin-input" id="reDist" type="number" step="0.01"></div>
+        <div class="admin-field"><label>สถานะ</label>
+          <select class="admin-sel" id="reActive"><option value="true">✅ พร้อมใช้</option><option value="false">❌ ปิด</option></select>
+        </div>
+      </div>
+      <div class="admin-field"><label>บันทึก / มาตรการความปลอดภัย</label><textarea class="admin-ta" id="reNotes" placeholder="เช่น จำกัดความเร็วไม่เกิน 60 กม./ชม."></textarea></div>
+      <div class="admin-btn-row" style="margin-top:12px">
+        <button class="admin-del" id="reDelBtn" onclick="deleteRoute()" style="display:none">🗑️ ลบเส้นทาง</button>
+        <button class="admin-save" onclick="saveRouteEdit()">💾 บันทึกข้อมูลเส้นทาง</button>
+      </div>
     </div>
+    <!-- CHECKPOINT LIST -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--dk)">📍 จุดอันตรายในเส้นทางนี้</div>
+        <div style="font-size:10px;color:var(--gr);margin-top:1px" id="reCpCount">0 จุด</div>
+      </div>
+      <div style="display:flex;gap:7px">
+        <button onclick="cloudPushCurrentRoute()" style="padding:7px 11px;border-radius:var(--r);background:var(--bl);color:#fff;border:none;font-size:11px;font-weight:600;cursor:pointer">☁️ Sync</button>
+        <button onclick="openAddForRoute()" style="padding:7px 12px;border-radius:var(--r);background:var(--or);color:#fff;border:none;font-size:12px;font-weight:700;cursor:pointer">+ เพิ่มจุด</button>
+      </div>
+    </div>
+    <div id="routeCpList" style="max-height:320px;overflow-y:auto;margin-bottom:6px"></div>
+    <button onclick="quickAddGPS()" style="width:100%;padding:10px;border-radius:var(--r);background:var(--gn2);color:var(--gn3);border:1px solid var(--gn);font-size:12px;font-weight:600;cursor:pointer">
+      📍 เพิ่มจุดด้วย GPS ปัจจุบันทันที
+    </button>
   </div>
 </div>
 
@@ -1361,8 +1378,16 @@ function saveCp() {
     if (idx !== -1) checkpoints[idx] = cpData;
   } else { checkpoints.push(cpData); }
 
-  saveCpsData(); closeAdminModal(); renderCheckpointLists(); if(lMap) renderMapElements();
-  showToast("💾 บันทึกจุดเสี่ยงเรียบร้อย");
+  saveCpsData(); closeAdminModal();
+  renderCheckpointLists(); if(lMap) renderMapElements();
+  showToast("💾 บันทึกจุดสำเร็จ");
+
+  // กลับไปหน้า Route Edit ถ้ามาจากที่นั่น
+  if(window._returnRouteId) {
+    var retId = window._returnRouteId;
+    window._returnRouteId = null;
+    setTimeout(function(){ openRouteEdit(retId); }, 100);
+  }
 }
 function deleteCp() {
   var idVal = parseInt(document.getElementById('editIdx').value);
@@ -1376,26 +1401,125 @@ function deleteCp() {
 // ===== ROUTE ACTIONS =====
 function openRouteEdit(id) {
   if (!adminUnlocked) { lockAdmin(); return; }
-  if (id === "") {
-    document.getElementById('reEditId').value = ""; document.getElementById('reRouteId').value = "";
-    document.getElementById('reName').value = ""; document.getElementById('reOrigin').value = "";
-    document.getElementById('reDest').value = ""; document.getElementById('reDist').value = "";
-    document.getElementById('reColor').value = "#BA7517"; document.getElementById('reActive').value = "true";
-    document.getElementById('reNotes').value = ""; document.getElementById('reDelBtn').style.display = "none";
+  if (id === '') {
+    document.getElementById('reEditId').value = '';
+    document.getElementById('reRouteId').value = '';
     document.getElementById('reRouteId').disabled = false;
+    document.getElementById('reName').value = '';
+    document.getElementById('reOrigin').value = '';
+    document.getElementById('reDest').value = '';
+    document.getElementById('reDist').value = '';
+    document.getElementById('reColor').value = '#BA7517';
+    document.getElementById('reActive').value = 'true';
+    document.getElementById('reNotes').value = '';
+    document.getElementById('reDelBtn').style.display = 'none';
+    renderRouteCpList('');
   } else {
-    var r = routes.find(function(rt){return rt.id === id;}); if (!r) return;
-    document.getElementById('reEditId').value = r.id; document.getElementById('reRouteId').value = r.id;
-    document.getElementById('reName').value = r.name; document.getElementById('reOrigin').value = r.origin||"";
-    document.getElementById('reDest').value = r.dest||""; document.getElementById('reDist').value = r.distance||"";
-    document.getElementById('reColor').value = r.color || "#BA7517";
-    document.getElementById('reActive').value = r.active ? "true" : "false";
-    document.getElementById('reNotes').value = r.notes || "";
-    document.getElementById('reDelBtn').style.display = "block";
+    var r = routes.find(function(rt){return rt.id===id;}); if(!r) return;
+    document.getElementById('reEditId').value = r.id;
+    document.getElementById('reRouteId').value = r.id;
     document.getElementById('reRouteId').disabled = true;
+    document.getElementById('reName').value = r.name||'';
+    document.getElementById('reOrigin').value = r.origin||'';
+    document.getElementById('reDest').value = r.dest||'';
+    document.getElementById('reDist').value = r.distance||r.dist||'';
+    document.getElementById('reColor').value = r.color||'#BA7517';
+    document.getElementById('reActive').value = r.active ? 'true' : 'false';
+    document.getElementById('reNotes').value = r.notes||'';
+    document.getElementById('reDelBtn').style.display = 'block';
+    renderRouteCpList(id);
   }
-  document.getElementById('routeEditModal').style.display = "flex";
+  document.getElementById('routeEditModal').style.display = 'flex';
 }
+
+function renderRouteCpList(routeId) {
+  var el = document.getElementById('routeCpList');
+  var countEl = document.getElementById('reCpCount');
+  if(!el) return;
+  var cps = routeId ? checkpoints.filter(function(c){return c.routeId===routeId;})
+    .sort(function(a,b){return parseFloat(a.km)-parseFloat(b.km);}) : [];
+  if(countEl) countEl.textContent = cps.length + ' จุด';
+  if(cps.length===0){
+    el.innerHTML='<div style="text-align:center;padding:20px;color:var(--gr);font-size:12px">ยังไม่มีจุดอันตราย<br>กด "+ เพิ่มจุด" หรือ 📍 GPS ด้านล่าง</div>';
+    return;
+  }
+  el.innerHTML = cps.map(function(cp){
+    return '<div style="display:flex;align-items:center;gap:9px;background:var(--wh);border-radius:var(--r);border:1px solid var(--bd);padding:9px 11px;margin-bottom:6px">'+
+      '<div style="width:28px;height:28px;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">'+(cp.emoji||'⚠️')+'</div>'+
+      '<div style="flex:1;min-width:0">'+
+        '<div style="font-size:12px;font-weight:600;color:var(--dk);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+cp.name+'</div>'+
+        '<div style="font-size:10px;color:var(--gr);margin-top:1px">'+cp.km+' · '+cp.type+(cp.alert?' · 🔔 แจ้งเตือน':'')+'</div>'+
+      '</div>'+
+      '<div style="display:flex;gap:5px">'+
+        '<button onclick="editCpFromRoute('+cp.id+')" style="padding:5px 9px;border-radius:var(--r);background:var(--bl2);color:var(--bl3);border:1px solid var(--bl);font-size:10px;font-weight:600;cursor:pointer">✏️</button>'+
+        '<button onclick="deleteCpFromRoute('+cp.id+')" style="padding:5px 8px;border-radius:var(--r);background:var(--rd2);color:var(--rd3);border:1px solid var(--rd);font-size:10px;cursor:pointer">🗑️</button>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+
+function openAddForRoute() {
+  var rid = document.getElementById('reEditId').value;
+  if(!rid){ showToast('⚠️ บันทึกเส้นทางก่อนเพิ่มจุด'); return; }
+  window._returnRouteId = rid;
+  closeRouteEdit();
+  // set routeId ให้ saveCp รู้ว่าจะใส่ route ไหน
+  currentRouteId = rid;
+  openAdd();
+}
+
+function editCpFromRoute(id) {
+  window._returnRouteId = document.getElementById('reEditId').value;
+  closeRouteEdit();
+  openEdit(id);
+}
+
+function deleteCpFromRoute(cpId) {
+  if(!confirm('ลบจุดนี้?')) return;
+  checkpoints = checkpoints.filter(function(c){return c.id!==cpId;});
+  saveCpsData();
+  renderRouteCpList(document.getElementById('reEditId').value);
+  if(lMap) renderMapElements();
+  showToast('🗑️ ลบจุดแล้ว');
+}
+
+function quickAddGPS() {
+  var rid = document.getElementById('reEditId').value;
+  if(!rid){ showToast('⚠️ บันทึกเส้นทางก่อน'); return; }
+  if(!myLat||!myLng){ requestGPS(); showToast('📡 เปิด GPS แล้ว รอสักครู่...'); return; }
+  var newCp = {
+    id: Date.now(), routeId: rid,
+    name: 'จุดใหม่ (' + (myLat.toFixed(4)) + ')',
+    km: '0 กม.', type: 'danger', emoji: '⚠️',
+    lat: myLat, lng: myLng,
+    alert: true, title: '', desc: '', speak: '', rules: []
+  };
+  checkpoints.push(newCp); saveCpsData();
+  renderRouteCpList(rid);
+  if(lMap) renderMapElements();
+  showToast('✅ เพิ่มจุด GPS แล้ว — กด ✏️ เพื่อตั้งชื่อ');
+}
+
+function exportRouteData() {
+  var rid = document.getElementById('reEditId').value || currentRouteId;
+  var cps = checkpoints.filter(function(c){return c.routeId===rid;});
+  var a = document.createElement('a');
+  a.href = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(cps,null,2));
+  a.download = 'route_'+rid+'_checkpoints.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  showToast('📤 Export '+rid+' ('+cps.length+' จุด)');
+}
+
+function cloudPushCurrentRoute() {
+  var rid = document.getElementById('reEditId').value || currentRouteId;
+  var cps = checkpoints.filter(function(c){return c.routeId===rid;});
+  if(!cps.length){ showToast('⚠️ ไม่มีจุดในเส้นทางนี้'); return; }
+  syncPushCheckpoints(cps, rid, function(ok){
+    if(ok) renderRouteCpList(rid);
+  });
+}
+
+
 function closeRouteEdit() { document.getElementById('routeEditModal').style.display = "none"; }
 function saveRouteEdit() {
   var id = document.getElementById('reRouteId').value.trim().toUpperCase();
