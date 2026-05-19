@@ -617,7 +617,7 @@ function _thaiSign(fill,stroke,inner,size){
   var s=size||120,h=s/2,m=s*0.071,m2=s*0.133,sw=s*0.058,sw2=s*0.021;
   return'<svg viewBox="0 0 '+s+' '+s+'" xmlns="http://www.w3.org/2000/svg">'+
     '<rect x="'+m+'" y="'+m+'" width="'+(s-m*2)+'" height="'+(s-m*2)+'" rx="'+(s*0.042)+'" fill="'+fill+'" stroke="'+stroke+'" stroke-width="'+sw+'" transform="rotate(45,'+h+','+h+')"/>'+
-    '<rect x="'+m2+'" y="'+m2+'" width="'+(s-m2*2)+'" height="'+(s-m2*2)+'" rx="'+(s*0.025)+'" fill="none" stroke="'+stroke+'" stroke-width="'+sw2+'" transform="rotate(45,'+h+','+h+')"/>'+
+    '<rect x="'+m2+'" y="'+m2+'" width="'+(s-m2*2)+'" height="'+(s-m2*2)+'" rx="'+(s*0.025)+'" fill="none" stroke="'+stroke+'" stroke-width="sw2" transform="rotate(45,'+h+','+h+')"/>'+
     inner+'</svg>';
 }
 function _warn(i){return _thaiSign('#FFCC00','#1A1A1A',i,120);}
@@ -783,7 +783,7 @@ function saveRoutesData() { localStorage.setItem('kspRoutes', JSON.stringify(rou
 function saveCpsData() { localStorage.setItem('kspCps', JSON.stringify(checkpoints)); }
 function saveHistData() { localStorage.setItem('kspHist', JSON.stringify(historyLogs)); }
 
-// ===== LEAFLET HANDLING MAP =====
+// ===== LEAFLET HANDLING MAP (SUCCESS PACKAGED) =====
 var lMap = null, truckMarker = null, myLocDotMarker = null, mapCMarkers = [];
 function initLeafletMap() {
   if (lMap) return;
@@ -804,6 +804,8 @@ function centerMap() {
     }
   }
 }
+
+// ฟังก์ชันดั้งเดิมเสริมประสิทธิภาพ: พ่นจุดเสี่ยงทั้งหมดและบังคับเปิด Popup อัตโนมัติค้างไว้ตามพิกัดดาวเทียม
 function renderMapElements() {
   if (!lMap) return;
   mapCMarkers.forEach(function(m){lMap.removeLayer(m);}); mapCMarkers = [];
@@ -812,19 +814,46 @@ function renderMapElements() {
 
   var activeCps = checkpoints.filter(function(c){return c.routeId === currentRouteId;});
   var pathCoords = [];
+  var boundsArray = [];
 
   activeCps.sort(function(a,b){return parseFloat(a.km)-parseFloat(b.km);}).forEach(function(cp) {
-    pathCoords.push([cp.lat, cp.lng]);
+    var latLng = [cp.lat, cp.lng];
+    pathCoords.push(latLng);
+    boundsArray.push(latLng);
+
     var mClass = "cp-marker " + (cp.type || "warn");
     if (passedCheckpoints[cp.id]) mClass += " passed";
     else if (lastActiveAlertCpId === cp.id) mClass += " alert-ring";
 
     var iconHtml = '<div class="' + mClass + '">' + (cp.emoji || "⚠️") + '</div>';
-    var cMark = L.marker([cp.lat, cp.lng], {
+    
+    // ปรับแต่งโครงสร้างความปลอดภัยเชิงพฤติกรรม (BBS) ลงไปในเนื้อหา Popup แผนที่โดยตรง
+    var rulesContent = "";
+    if (cp.rules && cp.rules.length > 0) {
+      rulesContent = "<div style='margin-top:6px; padding-top:4px; border-top:1px dashed #ddd;'>";
+      cp.rules.forEach(function(r) {
+        rulesContent += "<span style='font-size:10px; background:#FCEBEB; color:#791F1F; padding:1px 5px; border-radius:3px; margin-right:3px; display:inline-block;'>🛑 " + r + "</span>";
+      });
+      rulesContent += "</div>";
+    }
+
+    var popupHtml = '<div style="font-family:\'-apple-system\',BlinkMacSystemFont,\'Sarabun\',sans-serif; min-width:160px; font-size:12px; line-height:1.4;">' +
+      '<b style="color:var(--rd3); font-size:13px; display:block; margin-bottom:2px;">📍 ' + cp.name + '</b>' +
+      '<span style="color:var(--gr); font-size:10px; display:block; margin-bottom:4px;">⏱️ พิกัด กม.: ' + cp.km + '</span>' +
+      (cp.desc ? '<div style="color:var(--dk); font-weight:500;">' + cp.desc + '</div>' : '') +
+      rulesContent +
+    '</div>';
+
+    var cMark = L.marker(latLng, {
       icon: L.divIcon({ className: '', html: iconHtml, iconSize: [30, 30], iconAnchor: [15, 15] })
     }).addTo(lMap);
     
-    cMark.bindPopup("<b>" + cp.name + "</b><br>ระยะทาง: " + cp.km);
+    // ตั้งค่าปิด autoClose เพื่อให้ Popup ทุกจุดสามารถเด้งขึ้นมาพร้อมกันได้โดยไม่ตีกันเอง
+    cMark.bindPopup(popupHtml, { autoClose: false, closeOnClick: false });
+    
+    // สั่งให้ Popup ทำการเปิดตัวเองทันทีแบบสำเร็จรูป (Auto-Trigger Popup)
+    cMark.openPopup();
+    
     mapCMarkers.push(cMark);
   });
 
@@ -834,6 +863,11 @@ function renderMapElements() {
     if (currentRoute && currentRoute.color) rColor = currentRoute.color;
     var poly = L.polyline(pathCoords, { color: rColor, weight: 5, opacity: 0.75 }).addTo(lMap);
     mapCMarkers.push(poly);
+  }
+
+  // ปรับ Zoom อัตโนมัติให้พอดีกับพิกัดจุดตรวจสอบทั้งหมดที่กางอยู่บนแผนที่
+  if (boundsArray.length > 0 && !isTripActive && !isPreviewMode) {
+    lMap.fitBounds(L.featureGroup(mapCMarkers.filter(function(m){return m instanceof L.Marker;})).getBounds().pad(0.1));
   }
 
   var startPos = pathCoords[0] || [17.5823, 102.6012];
@@ -847,6 +881,7 @@ function renderMapElements() {
     icon: L.divIcon({ className: '', html: '<div class="my-loc-dot"></div>', iconSize: [14, 14], iconAnchor: [7, 7] })
   }).addTo(lMap);
 }
+
 function updateTruckMarkerPosition(lat, lng, heading, speed) {
   if (!truckMarker || !myLocDotMarker) return;
   truckMarker.setLatLng([lat, lng]);
@@ -1150,7 +1185,6 @@ function renderRouteLists() {
     var activeClass = r.id === currentRouteId ? "current" : "";
     if (!r.active) activeClass += " inactive";
 
-    // ปรับการดึงตัวแปรและเพิ่มการแสดงฟิลด์ข้อมูลให้ครอบคลุม ไม่เกิดปัญหา undefined
     var originText = r.origin || "ไม่ระบุ";
     var destText = r.dest || "ไม่ระบุ";
     var distanceText = r.distance || r.dist || "0";
@@ -1582,6 +1616,7 @@ function cloudPull() {
   });
 }
 
+// ขยายสคริปต์ให้เรียกใช้งานอัปเดตแผนที่และเปิด Popup เมื่อทำการดึงข้อมูลสำเร็จรูป
 function cloudPullRoutes() { 
   syncPullRoutes(function(data){
     if(data && data.length > 0) {
@@ -1716,7 +1751,6 @@ function loadCloudUrl() {
   return saved;
 }
 
-// Push TO Google Sheet
 function syncPushCheckpoints(cps, routeId, onDone) {
   var url = getCloudUrl();
   if(!url) { showToast('❌ ยังไม่ได้ตั้งค่า URL'); return; }
@@ -1756,7 +1790,6 @@ function syncPushCheckpoints(cps, routeId, onDone) {
   });
 }
 
-// Pull FROM Google Sheet
 function syncPullCheckpoints(routeId, onDone) {
   var url = getCloudUrl();
   if(!url) { showToast('❌ ยังไม่ได้ตั้งค่า URL'); return; }
@@ -1821,9 +1854,7 @@ function syncPullCheckpoints(routeId, onDone) {
       renderCheckpointLists();
       if(lMap) renderMapElements();
       
-      // หลังจากดึง Checkpoints แล้ว ให้ทำการดึงและอัปเดตรายละเอียดเส้นทางควบคู่ไปด้วยกันทันที
       syncPullRoutes();
-      
       showToast('✅ ดึงข้อมูลสำเร็จ ' + mapped.length + ' จุด');
       if(onDone) onDone(mapped);
     } else {
@@ -1837,7 +1868,6 @@ function syncPullCheckpoints(routeId, onDone) {
   });
 }
 
-// Pull Routes list และกระจายค่าป้องกันการเกิด undefined
 function syncPullRoutes(onDone) {
   var url = getCloudUrl();
   if(!url) return;
@@ -1846,7 +1876,6 @@ function syncPullRoutes(onDone) {
   .then(function(d){
     var rList = (d && d.data) ? d.data : (Array.isArray(d) ? d : null);
     if(rList && rList.length > 0) {
-      // ดัดแปลงเพื่อแปลงค่าตัวแปรจาก Apps Script (เช่น dist หรือ distance) ให้เข้าล็อกของโมเดลหน้าเว็บทั้งหมด
       var verifiedRoutes = rList.map(function(item) {
         return {
           id: item.id || item.route_id || "R01",
