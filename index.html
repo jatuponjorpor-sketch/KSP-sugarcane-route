@@ -110,7 +110,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Sarabun',sans-serif;backgroun
 .badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px}
 .badge-rd{background:var(--rd2);color:var(--rd3)}
 .badge-or{background:var(--or2);color:var(--or3)}
-.badge-gn{background:var(--gn2);color:var(--gn3)}
+.badge-gn覆{background:var(--gn2);color:var(--gn3)}
 .badge-bl{background:var(--bl2);color:var(--bl3)}
 
 /* ADMIN FORM */
@@ -649,7 +649,7 @@ function getTrafficSignSmall(type,w,h) {
   var g=function(i){return mk('#2E7D32','#1B5E20',i);};
   var b=function(i){return mk('#0D47A1','#01295e',i);};
   if(type==='curve')return y('<path d="M35 41 C28 41 23 38 22 32 C21 26 25 22 25 15 L29 15 C29 22 25 26 26 32 C27 38 32 40 35 40 Z" fill="'+c+'"/><polygon points="25,15 18,11 18,19" fill="'+c+'"/><rect x="22" y="39" width="14" height="4" fill="#FFCC00"/>');
-  if(type==='junction')return y('<rect x="27" y="11" width="6" height="38" rx="2" fill="'+c+'"/><rect x="11" y="27" width="38" height="6" rx="2" fill="'+c+'"/><polygon points="30,8 25,14 35,14" fill="'+c+'"/><polygon points="52,30 46,25 46,35" fill="'+c+'"/><polygon points="8,30 14,25 14,35" fill="'+c+'"/>');
+  if(type==='junction')return y('<rect x="27" y="11" width="6" height="38" rx="3" fill="'+c+'"/><rect x="11" y="27" width="38" height="6" rx="3" fill="'+c+'"/><polygon points="30,8 25,14 35,14" fill="'+c+'"/><polygon points="52,30 46,25 46,35" fill="'+c+'"/><polygon points="8,30 14,25 14,35" fill="'+c+'"/>');
   if(type==='merge')return y('<rect x="27" y="11" width="6" height="38" rx="2" fill="'+c+'"/><path d="M12 28 Q12 33 27 33 L27 27 Q18 27 18 23 Q18 19 12 19 Z" fill="'+c+'"/><polygon points="30,8 25,14 35,14" fill="'+c+'"/><polygon points="30,52 25,46 35,46" fill="'+c+'"/>');
   if(type==='narrow')return y('<rect x="27" y="11" width="6" height="38" rx="2" fill="'+c+'"/><polygon points="27,29 14,17 19,14 30,25 41,14 46,17 33,29" fill="'+c+'"/><polygon points="30,8 25,14 35,14" fill="'+c+'"/>');
   if(type==='downhill')return y('<path d="M13 17 L44 40 L44 46 L13 23 Z" fill="'+c+'"/><rect x="13" y="41" width="31" height="5" rx="2" fill="'+c+'"/><polygon points="44,38 50,45 38,45" fill="'+c+'"/>');
@@ -1125,7 +1125,7 @@ function resetTrip() {
   }
 }
 function saveTripToHistory() {
-  var activeCps = checkpoints.filter(function(c){return c.routeId === currentRouteId;});
+  var activeCps = checkpoints ? checkpoints.filter(function(c){return c.routeId === currentRouteId;}) : [];
   var total = activeCps.length, passed = Object.keys(passedCheckpoints).length;
   if (passed === 0) return;
 
@@ -1147,6 +1147,11 @@ function renderRouteLists() {
   var list = document.getElementById('routeList'), adminList = document.getElementById('adminRouteList');
   if(!list) return;
   list.innerHTML = ""; if(adminList) adminList.innerHTML = "";
+  
+  if (!routes || routes.length === 0) {
+    list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--gr);font-size:13px;">❌ ไม่พบข้อมูลเส้นทาง กรุณากดปุ่ม อัปเดต หรือเพิ่มเส้นทางใหม่</div>';
+    return;
+  }
   
   routes.forEach(function(r) {
     var totalCps = checkpoints ? checkpoints.filter(function(c){return c.routeId === r.id;}).length : 0;
@@ -1322,7 +1327,7 @@ function useMyGPS() {
   if (myLat && myLng) {
     document.getElementById('fLat').value = myLat.toFixed(5);
     document.getElementById('fLng').value = myLng.toFixed(5);
-    showToast("📍 ล็อกพิกัดปัจจุบันเรียบร้อย");
+    showToast("📍 ล็อกพิกัจปัจจุบันเรียบร้อย");
   } else { showToast("❌ สัญญาณ GPS ยังไม่พร้อมใช้งาน"); }
 }
 function saveCp() {
@@ -1804,12 +1809,17 @@ function syncPullRoutes(onDone) {
       localStorage.setItem('kspRoutes', JSON.stringify(d.data));
       routes = d.data; 
       showToast('✅ ดึงเส้นทาง ' + d.data.length + ' เส้น');
+      renderRouteLists();
       if(onDone) onDone(d.data);
     } else {
       showToast('❌ ' + (d.error||'ดึงเส้นทางไม่สำเร็จ'));
     }
   })
   .catch(function(e){ showToast('❌ ' + e.message); });
+}
+
+function cloudPullRoutes() {
+  syncPullRoutes();
 }
 
 // Test connection
