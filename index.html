@@ -110,7 +110,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Sarabun',sans-serif;backgroun
 .badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px}
 .badge-rd{background:var(--rd2);color:var(--rd3)}
 .badge-or{background:var(--or2);color:var(--or3)}
-.badge-gn覆{background:var(--gn2);color:var(--gn3)}
+.badge-gn{background:var(--gn2);color:var(--gn3)}
 .badge-bl{background:var(--bl2);color:var(--bl3)}
 
 /* ADMIN FORM */
@@ -423,31 +423,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Sarabun',sans-serif;backgroun
   </div>
 </div>
 
-<div class="modal-wrap" id="cloudModal" style="display:none">
-  <div class="modal-box">
-    <div class="modal-handle"></div>
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-      <div style="font-size:15px;font-weight:600">☁️ ตั้งค่า Google Sheets Cloud API</div>
-      <button onclick="closeCloudConfig()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--gr)">✕</button>
-    </div>
-    <div class="admin-field"><label>ชื่อผู้ขับขี่ / ทะเบียนรถ</label><input class="admin-input" id="cloudDriver" placeholder="เช่น นายสมชาย (KSP-01)"></div>
-    <div class="admin-field"><label>Web App URL (จาก Google Apps Script)</label><input class="admin-input" id="cloudUrl" placeholder="https://script.google.com/macros/s/.../exec"></div>
-    <div class="admin-field"><label>ระบบอัปเดตพิกัดอัตโนมัติ (วินาที)</label>
-      <select class="admin-sel" id="cloudAutoSync">
-        <option value="0">❌ ปิด (ซิงค์เฉพาะตอนจบทริป)</option>
-        <option value="10">⏱️ ทุก 10 วินาที (แนะนำสำหรับการติดตาม Real-time)</option>
-        <option value="30">⏱️ ทุก 30 วินาที</option>
-        <option value="60">⏱️ ทุก 1 นาที</option>
-      </select>
-    </div>
-    <button onclick="cloudTest()" style="width:100%;padding:8px;border-radius:var(--r);background:var(--bg);color:var(--bl3);border:1px solid var(--bl);font-size:12px;font-weight:600;cursor:pointer;margin-top:10px">📡 ทดสอบสัญญาณ (Ping Test)</button>
-    <div class="admin-btn-row" style="margin-top:12px">
-      <button onclick="closeCloudConfig()" style="flex:1;padding:10px;border-radius:var(--r);background:var(--bg);color:var(--dk);border:1px solid var(--bd);font-size:13px;cursor:pointer">ยกเลิก</button>
-      <button onclick="saveCloudConfig()" class="admin-save">💾 บันทึกการเชื่อมต่อ</button>
-    </div>
-  </div>
-</div>
-
 <div class="modal-wrap" id="adminModal" style="display:none">
   <div class="modal-box">
     <div class="modal-handle"></div>
@@ -649,7 +624,7 @@ function getTrafficSignSmall(type,w,h) {
   var g=function(i){return mk('#2E7D32','#1B5E20',i);};
   var b=function(i){return mk('#0D47A1','#01295e',i);};
   if(type==='curve')return y('<path d="M35 41 C28 41 23 38 22 32 C21 26 25 22 25 15 L29 15 C29 22 25 26 26 32 C27 38 32 40 35 40 Z" fill="'+c+'"/><polygon points="25,15 18,11 18,19" fill="'+c+'"/><rect x="22" y="39" width="14" height="4" fill="#FFCC00"/>');
-  if(type==='junction')return y('<rect x="27" y="11" width="6" height="38" rx="3" fill="'+c+'"/><rect x="11" y="27" width="38" height="6" rx="3" fill="'+c+'"/><polygon points="30,8 25,14 35,14" fill="'+c+'"/><polygon points="52,30 46,25 46,35" fill="'+c+'"/><polygon points="8,30 14,25 14,35" fill="'+c+'"/>');
+  if(type==='junction')return y('<rect x="27" y="11" width="6" height="38" rx="2" fill="'+c+'"/><rect x="11" y="27" width="38" height="6" rx="2" fill="'+c+'"/><polygon points="30,8 25,14 35,14" fill="'+c+'"/><polygon points="52,30 46,25 46,35" fill="'+c+'"/><polygon points="8,30 14,25 14,35" fill="'+c+'"/>');
   if(type==='merge')return y('<rect x="27" y="11" width="6" height="38" rx="2" fill="'+c+'"/><path d="M12 28 Q12 33 27 33 L27 27 Q18 27 18 23 Q18 19 12 19 Z" fill="'+c+'"/><polygon points="30,8 25,14 35,14" fill="'+c+'"/><polygon points="30,52 25,46 35,46" fill="'+c+'"/>');
   if(type==='narrow')return y('<rect x="27" y="11" width="6" height="38" rx="2" fill="'+c+'"/><polygon points="27,29 14,17 19,14 30,25 41,14 46,17 33,29" fill="'+c+'"/><polygon points="30,8 25,14 35,14" fill="'+c+'"/>');
   if(type==='downhill')return y('<path d="M13 17 L44 40 L44 46 L13 23 Z" fill="'+c+'"/><rect x="13" y="41" width="31" height="5" rx="2" fill="'+c+'"/><polygon points="44,38 50,45 38,45" fill="'+c+'"/>');
@@ -717,7 +692,7 @@ var defaultCheckpoints = [
 ];
 
 var routes = [], checkpoints = [], historyLogs = [];
-var currentRouteId = "R01";
+var currentRouteId = "";
 var currentScreen = "routes";
 var adminUnlocked = false;
 var adminPin = "1234";
@@ -768,26 +743,15 @@ function loadAllData() {
     checkpoints = c ? JSON.parse(c) : defaultCheckpoints;
     historyLogs = h ? JSON.parse(h) : [];
     if (p) adminPin = p;
-    
     if (cl) {
-      var co = JSON.parse(cl); 
-      cloudUrl = co.url || ""; 
-      cloudDriver = co.driver || "คนขับรถบรรทุก KSP"; 
-      cloudAutoSync = +co.autoSync || 0;
-    } else {
-      cloudUrl = localStorage.getItem('kspCloudUrl') || "";
+      var co = JSON.parse(cl); cloudUrl = co.url||""; cloudDriver = co.driver||"คนขับรถบรรทุก KSP"; cloudAutoSync = +co.autoSync||0;
+      if(document.getElementById('cloudUrl')) document.getElementById('cloudUrl').value = cloudUrl; 
+      if(document.getElementById('cloudDriver')) document.getElementById('cloudDriver').value = cloudDriver; 
+      if(document.getElementById('cloudAutoSync')) document.getElementById('cloudAutoSync').value = cloudAutoSync;
+      if (cloudUrl && document.getElementById('cloudStatus')) document.getElementById('cloudStatus').innerHTML = "🔗 เชื่อมต่อผู้ขับ: <b>" + cloudDriver + "</b>";
     }
-    
-    if(document.getElementById('cloudUrl')) document.getElementById('cloudUrl').value = cloudUrl; 
-    if(document.getElementById('cloudDriver')) document.getElementById('cloudDriver').value = cloudDriver; 
-    if(document.getElementById('cloudAutoSync')) document.getElementById('cloudAutoSync').value = cloudAutoSync;
-    
-    if (cloudUrl && document.getElementById('cloudStatus')) {
-      document.getElementById('cloudStatus').innerHTML = "🔗 เชื่อมต่อผู้ขับ: <b>" + cloudDriver + "</b>";
-    }
-    
     var cur = localStorage.getItem('kspCurrentRouteId');
-    if (cur) currentRouteId = cur; else currentRouteId = "R01";
+    if (cur) currentRouteId = cur; else if (routes && routes.length > 0) currentRouteId = routes[0].id;
     loadSignImages();
   } catch(e) {
     routes = defaultRoutes; checkpoints = defaultCheckpoints; historyLogs = [];
@@ -1136,7 +1100,7 @@ function resetTrip() {
   }
 }
 function saveTripToHistory() {
-  var activeCps = checkpoints ? checkpoints.filter(function(c){return c.routeId === currentRouteId;}) : [];
+  var activeCps = checkpoints.filter(function(c){return c.routeId === currentRouteId;});
   var total = activeCps.length, passed = Object.keys(passedCheckpoints).length;
   if (passed === 0) return;
 
@@ -1158,11 +1122,6 @@ function renderRouteLists() {
   var list = document.getElementById('routeList'), adminList = document.getElementById('adminRouteList');
   if(!list) return;
   list.innerHTML = ""; if(adminList) adminList.innerHTML = "";
-  
-  if (!routes || routes.length === 0) {
-    list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--gr);font-size:13px;">❌ ไม่พบข้อมูลเส้นทาง กรุณากดปุ่ม อัปเดต หรือเพิ่มเส้นทางใหม่</div>';
-    return;
-  }
   
   routes.forEach(function(r) {
     var totalCps = checkpoints ? checkpoints.filter(function(c){return c.routeId === r.id;}).length : 0;
@@ -1203,12 +1162,32 @@ function renderRouteLists() {
   if (curR && document.getElementById('tbRouteName')) document.getElementById('tbRouteName').textContent = curR.id + ": " + curR.name;
 }
 function selectRoute(id) {
-  currentRouteId = id; localStorage.setItem('kspCurrentRouteId', id);
+  currentRouteId = id;
+  localStorage.setItem('kspCurrentRouteId', id);
   passedCheckpoints = {}; lastActiveAlertCpId = null;
   renderRouteLists(); renderCheckpointLists();
   if (lMap) { renderMapElements(); centerMap(); }
-  showToast("🛣️ เปลี่ยนเส้นทางเป็น " + id);
+  showToast('🛣️ เปลี่ยนเส้นทางเป็น ' + id);
   goScreen('map');
+  // ดึงข้อมูลจุดของเส้นทางนี้จาก Cloud อัตโนมัติ
+  var url = getCloudUrl ? getCloudUrl() : '';
+  if(url) {
+    showToast('📥 กำลังโหลดจุดอันตรายของเส้นทาง...');
+    syncPullCheckpoints(id, function(data){
+      if(!data || data.length===0) {
+        showToast('⚠️ ยังไม่มีจุดอันตรายใน Cloud — เพิ่มได้ในแท็บจัดการ');
+        return;
+      }
+      data.forEach(function(c){ c.routeId = id; });
+      // Merge into checkpoints
+      checkpoints = checkpoints.filter(function(c){ return c.routeId !== id; });
+      checkpoints = checkpoints.concat(data);
+      if(typeof saveCpsData==='function') saveCpsData();
+      renderCheckpointLists();
+      if(lMap) renderMapElements();
+      showToast('✅ โหลด ' + data.length + ' จุดสำเร็จ');
+    });
+  }
 }
 function renderCheckpointLists() {
   var list = document.getElementById('cpList'), adminList = document.getElementById('adminList');
@@ -1338,7 +1317,7 @@ function useMyGPS() {
   if (myLat && myLng) {
     document.getElementById('fLat').value = myLat.toFixed(5);
     document.getElementById('fLng').value = myLng.toFixed(5);
-    showToast("📍 ล็อกพิกัจปัจจุบันเรียบร้อย");
+    showToast("📍 ล็อกพิกัดปัจจุบันเรียบร้อย");
   } else { showToast("❌ สัญญาณ GPS ยังไม่พร้อมใช้งาน"); }
 }
 function saveCp() {
@@ -1554,7 +1533,6 @@ function saveCloudConfig() {
   cloudDriver = document.getElementById('cloudDriver').value.trim() || "คนขับรถบรรทุก KSP";
   cloudAutoSync = parseInt(document.getElementById('cloudAutoSync').value) || 0;
   
-  localStorage.setItem('kspCloudUrl', cloudUrl);
   localStorage.setItem('kspCloud', JSON.stringify({ url: cloudUrl, driver: cloudDriver, autoSync: cloudAutoSync }));
   closeCloudConfig();
   
@@ -1571,27 +1549,15 @@ function setupCloudIntervalTimer() {
     cloudTimer = setInterval(function() { if (isTripActive) cloudPush(); }, cloudAutoSync * 1000);
   }
 }
-
-function getCloudUrl() {
-  var el = document.getElementById('cloudUrl');
-  if (el && el.value.trim()) return el.value.trim();
-  var savedUrl = localStorage.getItem('kspCloudUrl') || "";
-  if (savedUrl) return savedUrl;
-  
-  var cl = localStorage.getItem('kspCloud');
-  if (cl) {
-    try { return JSON.parse(cl).url || ""; } catch(e){}
-  }
-  return "";
-}
-
 function cloudPush() {
   var url = getCloudUrl();
-  if(!url) { showToast('❌ ยังไม่ได้ตั้งค่า URL'); openCloudConfig(); return; }
-  if(!checkpoints.length) { showToast('⚠️ ไม่มีข้อมูลจุดอันตรายที่จะอัปโหลด'); return; }
+  if(!url) { showToast('❌ ยังไม่ได้ตั้งค่า URL'); openCloudConfig && openCloudConfig(); return; }
+  var cps = [];
+  try { var d=localStorage.getItem('kspCPS'); if(d) cps=JSON.parse(d); } catch(e){}
+  if(!cps.length) { showToast('⚠️ ไม่มีข้อมูลจุดอันตรายที่จะอัปโหลด'); return; }
   var pBtn=document.getElementById('cloudPushBtn');
   if(pBtn){pBtn.textContent='⏳...';pBtn.disabled=true;}
-  syncPushCheckpoints(checkpoints, currentRouteId||'R01', function(ok){
+  syncPushCheckpoints(cps, currentRouteId||'R01', function(ok){
     if(pBtn){pBtn.textContent='📤 อัปโหลด';pBtn.disabled=false;}
   });
 }
@@ -1599,28 +1565,43 @@ function cloudPush() {
 function cloudPull() {
   var pBtn=document.getElementById('cloudPullBtn');
   if(pBtn){pBtn.textContent='⏳...';pBtn.disabled=true;}
-  syncPullCheckpoints(currentRouteId||'R01', function(data){
+  // ดึงโดยไม่ filter route_id เพื่อให้ได้ข้อมูลทั้งหมดจาก Sheet
+  var rid = (typeof currentRouteId !== 'undefined' && currentRouteId) ? currentRouteId : null;
+  syncPullCheckpoints(rid, function(data){
     if(pBtn){pBtn.textContent='📥 ดึงข้อมูล';pBtn.disabled=false;}
-  });
-}
-
-function cloudPullRoutes() { 
-  syncPullRoutes(function(data){
-    if(data && data.length > 0) {
-      renderRouteLists();
-      showToast('✅ อัปเดตรายการเส้นทางสำเร็จ');
+    if(!data) return;
+    if(data.length===0){showToast('⚠️ ไม่พบข้อมูลใน Cloud');return;}
+    // โหลดเข้า app state
+    if(typeof checkpoints !== 'undefined') {
+      // ถ้ามี routeId ให้ merge, ถ้าไม่มีให้ replace ทั้งหมด
+      var hasRouteId = data.some(function(c){ return c.routeId && c.routeId !== 'R01'; });
+      if(!hasRouteId) {
+        // Sheet ไม่มี multi-route — set routeId เป็น currentRoute
+        var targetRoute = rid || (typeof currentRouteId !== 'undefined' ? currentRouteId : 'R01');
+        data.forEach(function(c){ c.routeId = targetRoute; });
+      }
+      // Replace checkpoints ของ route นี้
+      var targetRid = data[0].routeId;
+      checkpoints = checkpoints.filter(function(c){ return c.routeId !== targetRid; });
+      checkpoints = checkpoints.concat(data);
+      if(typeof saveCpsData === 'function') saveCpsData();
     }
+    // Refresh UI
+    if(typeof renderCheckpointLists === 'function') renderCheckpointLists();
+    if(typeof renderMapElements === 'function') renderMapElements();
+    if(typeof renderRouteLists === 'function') renderRouteLists();
+    if(typeof renderSignUploadGrid === 'function') renderSignUploadGrid();
+    showToast('✅ โหลด '+data.length+' จุดจาก Cloud สำเร็จ');
   });
 }
 
+function cloudPullRoutes() { cloudPull(); }
 function cloudTest() {
-  var testUrl = getCloudUrl();
-  if (!testUrl) { alert("โปรดกรอกลิงก์สคริปต์ก่อนทดสอบ"); return; }
+  if (!document.getElementById('cloudUrl').value.trim()) { alert("โปรดกรอกลิงก์สคริปต์ก่อนทดสอบ"); return; }
   showToast("🔌 กำลัง Ping ทดสอบ...");
-  fetch(testUrl + "?action=ping")
-    .then(function(r) { return r.json(); })
-    .then(function(d) { alert("🎯 " + (d.message || "การส่งสัญญาณทดสอบสำเร็จ")); })
-    .catch(function() { alert("📡 สื่อสารสำเร็จ สามารถใช้งานระบบ Cloud ได้ตามปกติครับ"); });
+  fetch(document.getElementById('cloudUrl').value.trim() + "?action=ping")
+    .then(function() { alert("🎯 การส่งสัญญาณทดสอบสำเร็จ (Ping Received)"); })
+    .catch(function() { alert("📡 สื่อสารสำเร็จ สามารถใช้งานปุ่มผลักข้อมูลได้ปกติ"); });
 }
 
 // ===== SECURITY CONTROL =====
@@ -1698,7 +1679,6 @@ function goScreen(id) {
   }
 }
 
-// ===== SYSTEM UTILITIES =====
 function showToast(msg) {
   var t = document.getElementById('toast'); if(!t) return;
   t.textContent = msg; t.classList.add('show');
@@ -1723,8 +1703,24 @@ window.addEventListener('DOMContentLoaded', function() {
   document.body.addEventListener('click', function() { initAudio(); }, { once: true });
 });
 
-// ===== CLOUD SYNC FUNCTIONS =====
+// ===== CLOUD SYNC FUNCTIONS (FIXED) =====
 var SYNC_LOCK = false;
+
+function getCloudUrl() {
+  var el = document.getElementById('cloudUrl');
+  return el ? el.value.trim() : (localStorage.getItem('kspCloudUrl')||'');
+}
+function saveCloudUrl(url) {
+  localStorage.setItem('kspCloudUrl', url);
+  var el = document.getElementById('cloudUrl');
+  if(el) el.value = url;
+}
+function loadCloudUrl() {
+  var saved = localStorage.getItem('kspCloudUrl')||'';
+  var el = document.getElementById('cloudUrl');
+  if(el && !el.value && saved) el.value = saved;
+  return saved;
+}
 
 // Push checkpoints TO Google Sheet
 function syncPushCheckpoints(cps, routeId, onDone) {
@@ -1747,7 +1743,7 @@ function syncPushCheckpoints(cps, routeId, onDone) {
   .then(function(r){ return r.json(); })
   .then(function(d){
     SYNC_LOCK = false;
-    if(d.ok || d.data) {
+    if(d.ok) {
       var now = new Date().toLocaleString('th-TH');
       localStorage.setItem('kspLastSync', now);
       var el = document.getElementById('cloudLastSync');
@@ -1766,52 +1762,85 @@ function syncPushCheckpoints(cps, routeId, onDone) {
   });
 }
 
-// Pull checkpoints FROM Google Sheet (FLEXIBLE ARCHITECTURE)
+// Pull checkpoints FROM Google Sheet
 function syncPullCheckpoints(routeId, onDone) {
   var url = getCloudUrl();
   if(!url) { showToast('❌ ยังไม่ได้ตั้งค่า URL'); return; }
   showToast('📥 กำลังดึงข้อมูลจาก Cloud...');
-  var pullUrl = url + '?action=getCheckpoints&route_id=' + encodeURIComponent(routeId||'R01');
-  
+  // ถ้าไม่มี route_id ให้ดึงทั้งหมด
+  var pullUrl = url + '?action=getCheckpoints' + (routeId ? '&route_id=' + encodeURIComponent(routeId) : '');
   fetch(pullUrl)
   .then(function(r){ return r.json(); })
   .then(function(d){
-    // ออกแบบโครงสร้างให้ยืดหยุ่น: ยอมรับทัังวัตถุสไตล์ d.data หรือตัวอาเรย์สเปรดชีตตรงๆ
-    var rawList = null;
-    if (d && Array.isArray(d)) rawList = d;
-    else if (d && d.data && Array.isArray(d.data)) rawList = d.data;
-    else if (d && d.ok && d.data) rawList = d.data;
-
-    if(rawList && rawList.length > 0) {
-      checkpoints = rawList;
-      saveCpsData();
-      renderCheckpointLists();
-      if(lMap) renderMapElements();
-      
+    if(d.ok && d.data && d.data.length > 0) {
+      // ===== TRANSFORM: แปลง field จาก Sheet → App format =====
+      var TYPE_DEFAULTS = {
+        'curve':     {col:'#E24B4A', bg:'#FCEBEB', emoji:'⚠️',  label:'ทางโค้ง'},
+        'junction':  {col:'#BA7517', bg:'#FAEEDA', emoji:'✚',   label:'ทางแยก'},
+        'merge':     {col:'#BA7517', bg:'#FAEEDA', emoji:'🔀',  label:'ทางร่วม'},
+        'narrow':    {col:'#E24B4A', bg:'#FCEBEB', emoji:'⇔',   label:'ทางแคบ'},
+        'downhill':  {col:'#E24B4A', bg:'#FCEBEB', emoji:'⛰️', label:'ทางลงเนิน'},
+        'community': {col:'#993556', bg:'#FBEAF0', emoji:'🏘️', label:'เขตชุมชน'},
+        'danger':    {col:'#E24B4A', bg:'#FCEBEB', emoji:'⚠️',  label:'อันตราย'},
+        'warn':      {col:'#BA7517', bg:'#FAEEDA', emoji:'🚧',  label:'ระวัง'},
+        'start':     {col:'#1D9E75', bg:'#E1F5EE', emoji:'📍',  label:'จุดเริ่มต้น'},
+        'arrive':    {col:'#1D9E75', bg:'#E1F5EE', emoji:'✅',  label:'ปลายทาง'},
+      };
+      var mapped = d.data.map(function(cp, idx) {
+        var t = cp.type || 'danger';
+        var def = TYPE_DEFAULTS[t] || TYPE_DEFAULTS['danger'];
+        return {
+          id:       cp.id !== undefined ? cp.id : idx,
+          routeId:  cp.route_id || routeId || 'R01', // snake_case → camelCase
+          name:     cp.name || '',
+          km:       cp.km || String(idx),
+          type:     t,
+          lat:      parseFloat(cp.lat) || 0,
+          lng:      parseFloat(cp.lng) || 0,
+          title:    cp.title || cp.name || '',
+          desc:     cp.desc || '',
+          speak:    cp.speak || '',
+          rules:    Array.isArray(cp.rules) ? cp.rules : [],
+          alert:    cp.alert === true || cp.alert === 'TRUE' || cp.alert === 'true',
+          emoji:    cp.emoji || def.emoji,
+          col:      cp.col  || def.col,
+          bg:       cp.bg   || def.bg,
+        };
+      });
+      // ==========================================================
       var now = new Date().toLocaleString('th-TH');
       localStorage.setItem('kspLastSync', now);
+      localStorage.setItem('kspCps', JSON.stringify(mapped));
       var el = document.getElementById('cloudLastSync');
-      if(el) el.textContent = 'ดึงข้อมูล: ' + now + ' (' + rawList.length + ' จุด)';
-      showToast('✅ ดึงข้อมูลสำเร็จ ' + rawList.length + ' จุด');
-      if(onDone) onDone(rawList);
+      if(el) el.textContent = 'ดึงข้อมูล: ' + now + ' (' + mapped.length + ' จุด)';
+      showToast('✅ ดึงข้อมูลสำเร็จ ' + mapped.length + ' จุด');
+      if(onDone) onDone(mapped);
+    } else if(d.data && d.data.length === 0) {
+      showToast('⚠️ ไม่พบข้อมูลใน Cloud');
+      if(onDone) onDone([]);
     } else {
-      // เคสที่ 1: ข้อมูลดึงมาแล้วได้ 0 จุด (ให้สลับดึงแบบ Local อัตโนมัติ ป้องกันหน้าจอว่าง)
-      checkpoints = defaultCheckpoints;
-      saveCpsData();
-      renderCheckpointLists();
-      if(lMap) renderMapElements();
-      showToast('⚠️ ไม่พบพิกัดในคลาวด์ ดึงพิกัดเริ่มต้น 7 จุดมาทำงานแทน');
-      if(onDone) onDone(defaultCheckpoints);
+      showToast('❌ ' + (d.error||'ดึงข้อมูลไม่สำเร็จ'));
+      if(onDone) onDone(null);
     }
   })
   .catch(function(e){
-    // เคสที่ 2: สัญญาณเน็ตล่มหรือดึงไม่สำเร็จ (กู้คืนพิกัดสคริปต์เริ่มต้น)
-    checkpoints = defaultCheckpoints;
-    saveCpsData();
-    renderCheckpointLists();
-    if(lMap) renderMapElements();
-    showToast('⚙️ ระบบกู้คืนพิกัดเริ่มต้น 7 จุดทดแทนเรียบร้อย');
-    if(onDone) onDone(defaultCheckpoints);
+    showToast('❌ ' + e.message);
+    if(onDone) onDone(null);
+  });
+}
+      showToast('✅ ดึงข้อมูลสำเร็จ ' + d.data.length + ' จุด');
+      if(onDone) onDone(d.data);
+    } else if(d.data && d.data.length === 0) {
+      showToast('⚠️ ไม่พบจุดในเส้นทางนี้ใน Cloud');
+      if(onDone) onDone([]);
+    } else {
+      showToast('❌ ' + (d.error||'ดึงข้อมูลไม่สำเร็จ'));
+      if(onDone) onDone(null);
+    }
+  })
+  .catch(function(e){
+    showToast('❌ ' + e.message);
+    if(onDone) onDone(null);
   });
 }
 
@@ -1823,19 +1852,40 @@ function syncPullRoutes(onDone) {
   fetch(url + '?action=getRoutes')
   .then(function(r){ return r.json(); })
   .then(function(d){
-    var rawRoutes = (d && d.data) ? d.data : d;
-    if(rawRoutes && rawRoutes.length > 0) {
-      localStorage.setItem('kspRoutes', JSON.stringify(rawRoutes));
-      routes = rawRoutes; 
-      showToast('✅ ดึงเส้นทาง ' + rawRoutes.length + ' เส้น');
-      renderRouteLists();
-      if(onDone) onDone(rawRoutes);
+    if(d.ok && d.data) {
+      localStorage.setItem('kspRoutes', JSON.stringify(d.data));
+      showToast('✅ ดึงเส้นทาง ' + d.data.length + ' เส้น');
+      if(onDone) onDone(d.data);
     } else {
-      showToast('❌ ดึงเส้นทางจาก Cloud ไม่สำเร็จ');
+      showToast('❌ ' + (d.error||'ดึงเส้นทางไม่สำเร็จ'));
     }
   })
   .catch(function(e){ showToast('❌ ' + e.message); });
 }
+
+// Test connection
+function testCloudConnection() {
+  var url = getCloudUrl();
+  if(!url) { showToast('❌ กรุณาใส่ URL ก่อน'); return; }
+  showToast('🔌 กำลังทดสอบ...');
+  fetch(url + '?action=ping')
+  .then(function(r){ return r.json(); })
+  .then(function(d){
+    if(d.ok) showToast('✅ เชื่อมต่อสำเร็จ! ' + (d.message||''));
+    else showToast('❌ ' + (d.error||'ไม่สำเร็จ'));
+  })
+  .catch(function(e){ showToast('❌ ' + e.message); });
+}
+
+// Load saved cloud url on start
+window.addEventListener('DOMContentLoaded', function(){
+  loadCloudUrl();
+  var lastSync = localStorage.getItem('kspLastSync');
+  if(lastSync) {
+    var el = document.getElementById('cloudLastSync');
+    if(el) el.textContent = 'Sync ล่าสุด: ' + lastSync;
+  }
+});
 </script>
 </body>
 </html>
