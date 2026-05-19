@@ -1828,21 +1828,6 @@ function syncPullCheckpoints(routeId, onDone) {
     if(onDone) onDone(null);
   });
 }
-      showToast('✅ ดึงข้อมูลสำเร็จ ' + d.data.length + ' จุด');
-      if(onDone) onDone(d.data);
-    } else if(d.data && d.data.length === 0) {
-      showToast('⚠️ ไม่พบจุดในเส้นทางนี้ใน Cloud');
-      if(onDone) onDone([]);
-    } else {
-      showToast('❌ ' + (d.error||'ดึงข้อมูลไม่สำเร็จ'));
-      if(onDone) onDone(null);
-    }
-  })
-  .catch(function(e){
-    showToast('❌ ' + e.message);
-    if(onDone) onDone(null);
-  });
-}
 
 // Pull ALL routes list
 function syncPullRoutes(onDone) {
