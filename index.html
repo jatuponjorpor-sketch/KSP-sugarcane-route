@@ -1141,4 +1141,104 @@ function saveTripToHistory() {
   var total = activeCps.length, passed = Object.keys(passedCheckpoints).length;
   if (passed === 0) return;
 
-  var current
+  var currentRoute = routes.find(function(r){return r.id === currentRouteId;});
+  var log = {
+    id: Date.now(),
+    routeName: currentRoute ? currentRoute.name : currentRouteId,
+    date: new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' }),
+    time: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }),
+    elapsed: document.getElementById('tripElapsed') ? document.getElementById('tripElapsed').textContent : "00:00:00",
+    score: passed + "/" + total
+  };
+  historyLogs.unshift(log); saveHistData(); renderHistoryList();
+  if (cloudUrl && cloudAutoSync > 0) cloudPush();
+}
+
+// ===== UI RENDER SYSTEMS =====
+function renderRouteLists() {
+  var list = document.getElementById('routeList'), adminList = document.getElementById('adminRouteList');
+  if(!list) return;
+  list.innerHTML = ""; if(adminList) adminList.innerHTML = "";
+  
+  if (!routes || routes.length === 0) {
+    list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--gr);font-size:13px;">❌ ไม่พบข้อมูลเส้นทาง กรุณากดปุ่ม อัปเดต หรือเพิ่มเส้นทางใหม่</div>';
+    return;
+  }
+  
+  routes.forEach(function(r) {
+    var totalCps = checkpoints ? checkpoints.filter(function(c){return c.routeId === r.id;}).length : 0;
+    var activeClass = r.id === currentRouteId ? "current" : "";
+    if (!r.active) activeClass += " inactive";
+
+    var html = '<div class="route-card ' + activeClass + '" onclick="selectRoute(\'' + r.id + '\')">' +
+      '<div class="route-card-head">' +
+        '<div class="route-card-id" style="background:' + (r.color||'var(--or)') + '">' + r.id + '</div>' +
+        '<div class="route-card-body">' +
+          '<div class="route-card-name">' + r.name + '</div>' +
+          '<div class="route-card-meta">ต้นทาง: ' + r.origin + ' ➔ ปลายทาง: ' + r.dest + '</div>' +
+        '</div>' +
+        (r.id === currentRouteId ? '<div class="route-card-tick">✓</div>' : '') +
+      '</div>' +
+      '<div class="route-card-foot">' +
+        '<div class="route-stat">ระยะทาง <b>' + r.distance + ' กม.</b></div>' +
+        '<div class="route-stat">จุดเสี่ยง <b>' + totalCps + ' จุด</b></div>' +
+        '<div class="route-status ' + (r.active?'on':'off') + '">' + (r.active?'พร้อมใช้':'ปิด') + '</div>' +
+      '</div>' +
+    '</div>';
+    list.insertAdjacentHTML('beforeend', html);
+
+    if(adminList) {
+      var aHtml = '<div class="admin-route-row" onclick="openRouteEdit(\'' + r.id + '\')">' +
+        '<div class="admin-route-id" style="background:' + (r.color||'var(--or)') + '">' + r.id + '</div>' +
+        '<div style="flex:1;min-width:0">' +
+          '<div style="font-size:13px;font-weight:600;color:var(--dk);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + r.name + '</div>' +
+          '<div style="font-size:10px;color:var(--gr)">' + r.distance + ' กม. · ' + totalCps + ' เช็กพอยต์</div>' +
+        '</div>' +
+        '<div style="font-size:12px;color:var(--gr)">⚙️ แก้ไข</div>' +
+      '</div>';
+      adminList.insertAdjacentHTML('beforeend', aHtml);
+    }
+  });
+  
+  var curR = routes.find(function(r){return r.id === currentRouteId;});
+  if (curR && document.getElementById('tbRouteName')) document.getElementById('tbRouteName').textContent = curR.id + ": " + curR.name;
+}
+function selectRoute(id) {
+  currentRouteId = id; localStorage.setItem('kspCurrentRouteId', id);
+  passedCheckpoints = {}; lastActiveAlertCpId = null;
+  renderRouteLists(); renderCheckpointLists();
+  if (lMap) { renderMapElements(); centerMap(); }
+  showToast("🛣️ เปลี่ยนเส้นทางเป็น " + id);
+  goScreen('map');
+}
+function renderCheckpointLists() {
+  var list = document.getElementById('cpList'), adminList = document.getElementById('adminList');
+  if(!list) return;
+  list.innerHTML = ""; if(adminList) adminList.innerHTML = "";
+
+  var activeCps = checkpoints ? checkpoints.filter(function(c){return c.routeId === currentRouteId;}).sort(function(a,b){return parseFloat(a.km)-parseFloat(b.km);}) : [];
+  var total = activeCps.length, passed = Object.keys(passedCheckpoints).length;
+
+  if(document.getElementById('tripChk')) document.getElementById('tripChk').textContent = passed + "/" + total;
+  if(document.getElementById('mapChk')) document.getElementById('mapChk').textContent = passed + "/" + total;
+  var pct = total > 0 ? (passed / total * 100) : 0;
+  if(document.getElementById('progFill')) document.getElementById('progFill').style.width = pct + "%";
+
+  activeCps.forEach(function(cp) {
+    var isDone = passedCheckpoints[cp.id];
+    var isAlertActive = lastActiveAlertCpId === cp.id;
+    var itemClass = "cp-item " + (isDone ? "done" : "");
+    if (isAlertActive) itemClass += (cp.type === 'community' ? ' nearby-warn' : ' nearby');
+
+    var html = '<div class="' + itemClass + '" onclick="focusMarker(' + cp.lat + ',' + cp.lng + ')">' +
+      '<div class="cp-dot" style="background:' + (isDone?'var(--gn2)':(cp.type==='community'?'var(--pu2)':'var(--rd2)')) + '">' + getTrafficSignSmall(cp.type,24,24) + '</div>' +
+      '<div class="cp-body">' +
+        '<div class="cp-name">' + cp.name + '</div>' +
+        '<div class="cp-sub">ตำแหน่ง: ' + cp.km + ' · ' + (isDone ? '⏱️ ผ่านแล้วเมื่อ ' + isDone : '📡 ตรวจพิกัดอัตโนมัติ') + '</div>' +
+      '</div>' +
+      '<div class="cp-chk">' + (isDone ? '✓' : '') + '</div>' +
+    '</div>';
+    list.insertAdjacentHTML('beforeend', html);
+
+    if(adminList) {
+      var admHtml = '<div class="admin-card" id="cp-card-' + cp.id +
