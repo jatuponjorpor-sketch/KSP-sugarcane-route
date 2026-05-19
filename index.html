@@ -717,7 +717,7 @@ var defaultCheckpoints = [
 ];
 
 var routes = [], checkpoints = [], historyLogs = [];
-var currentRouteId = "";
+var currentRouteId = "R01";
 var currentScreen = "routes";
 var adminUnlocked = false;
 var adminPin = "1234";
@@ -775,7 +775,6 @@ function loadAllData() {
       cloudDriver = co.driver || "คนขับรถบรรทุก KSP"; 
       cloudAutoSync = +co.autoSync || 0;
     } else {
-      // ดักเคสคีย์เก่าหลุดหลงเหลืออยู่
       cloudUrl = localStorage.getItem('kspCloudUrl') || "";
     }
     
@@ -788,7 +787,7 @@ function loadAllData() {
     }
     
     var cur = localStorage.getItem('kspCurrentRouteId');
-    if (cur) currentRouteId = cur; else if (routes && routes.length > 0) currentRouteId = routes[0].id;
+    if (cur) currentRouteId = cur; else currentRouteId = "R01";
     loadSignImages();
   } catch(e) {
     routes = defaultRoutes; checkpoints = defaultCheckpoints; historyLogs = [];
@@ -1555,7 +1554,6 @@ function saveCloudConfig() {
   cloudDriver = document.getElementById('cloudDriver').value.trim() || "คนขับรถบรรทุก KSP";
   cloudAutoSync = parseInt(document.getElementById('cloudAutoSync').value) || 0;
   
-  // บันทึกทั้ง 2 ระบบเพื่อกันคีย์หลุด
   localStorage.setItem('kspCloudUrl', cloudUrl);
   localStorage.setItem('kspCloud', JSON.stringify({ url: cloudUrl, driver: cloudDriver, autoSync: cloudAutoSync }));
   closeCloudConfig();
@@ -1603,16 +1601,6 @@ function cloudPull() {
   if(pBtn){pBtn.textContent='⏳...';pBtn.disabled=true;}
   syncPullCheckpoints(currentRouteId||'R01', function(data){
     if(pBtn){pBtn.textContent='📥 ดึงข้อมูล';pBtn.disabled=false;}
-    if(!data) return;
-    if(data.length===0){showToast('⚠️ ไม่พบข้อมูลใน Cloud สำหรับเส้นทางนี้');return;}
-    
-    checkpoints = data; 
-    saveCpsData();
-    
-    renderCheckpointLists();
-    if(lMap) renderMapElements();
-    
-    showToast('✅ โหลด '+data.length+' จุดจาก Cloud สำเร็จ');
   });
 }
 
@@ -1759,7 +1747,7 @@ function syncPushCheckpoints(cps, routeId, onDone) {
   .then(function(r){ return r.json(); })
   .then(function(d){
     SYNC_LOCK = false;
-    if(d.ok) {
+    if(d.ok || d.data) {
       var now = new Date().toLocaleString('th-TH');
       localStorage.setItem('kspLastSync', now);
       var el = document.getElementById('cloudLastSync');
@@ -1778,33 +1766,52 @@ function syncPushCheckpoints(cps, routeId, onDone) {
   });
 }
 
-// Pull checkpoints FROM Google Sheet
+// Pull checkpoints FROM Google Sheet (FLEXIBLE ARCHITECTURE)
 function syncPullCheckpoints(routeId, onDone) {
   var url = getCloudUrl();
   if(!url) { showToast('❌ ยังไม่ได้ตั้งค่า URL'); return; }
   showToast('📥 กำลังดึงข้อมูลจาก Cloud...');
   var pullUrl = url + '?action=getCheckpoints&route_id=' + encodeURIComponent(routeId||'R01');
+  
   fetch(pullUrl)
   .then(function(r){ return r.json(); })
   .then(function(d){
-    if(d.ok && d.data && d.data.length > 0) {
+    // ออกแบบโครงสร้างให้ยืดหยุ่น: ยอมรับทัังวัตถุสไตล์ d.data หรือตัวอาเรย์สเปรดชีตตรงๆ
+    var rawList = null;
+    if (d && Array.isArray(d)) rawList = d;
+    else if (d && d.data && Array.isArray(d.data)) rawList = d.data;
+    else if (d && d.ok && d.data) rawList = d.data;
+
+    if(rawList && rawList.length > 0) {
+      checkpoints = rawList;
+      saveCpsData();
+      renderCheckpointLists();
+      if(lMap) renderMapElements();
+      
       var now = new Date().toLocaleString('th-TH');
       localStorage.setItem('kspLastSync', now);
       var el = document.getElementById('cloudLastSync');
-      if(el) el.textContent = 'ดึงข้อมูล: ' + now + ' (' + d.data.length + ' จุด)';
-      showToast('✅ ดึงข้อมูลสำเร็จ ' + d.data.length + ' จุด');
-      if(onDone) onDone(d.data);
-    } else if(d.data && d.data.length === 0) {
-      showToast('⚠️ ไม่พบจุดในเส้นทางนี้ใน Cloud');
-      if(onDone) onDone([]);
+      if(el) el.textContent = 'ดึงข้อมูล: ' + now + ' (' + rawList.length + ' จุด)';
+      showToast('✅ ดึงข้อมูลสำเร็จ ' + rawList.length + ' จุด');
+      if(onDone) onDone(rawList);
     } else {
-      showToast('❌ ' + (d.error||'ดึงข้อมูลไม่สำเร็จ'));
-      if(onDone) onDone(null);
+      // เคสที่ 1: ข้อมูลดึงมาแล้วได้ 0 จุด (ให้สลับดึงแบบ Local อัตโนมัติ ป้องกันหน้าจอว่าง)
+      checkpoints = defaultCheckpoints;
+      saveCpsData();
+      renderCheckpointLists();
+      if(lMap) renderMapElements();
+      showToast('⚠️ ไม่พบพิกัดในคลาวด์ ดึงพิกัดเริ่มต้น 7 จุดมาทำงานแทน');
+      if(onDone) onDone(defaultCheckpoints);
     }
   })
   .catch(function(e){
-    showToast('❌ ' + e.message);
-    if(onDone) onDone(null);
+    // เคสที่ 2: สัญญาณเน็ตล่มหรือดึงไม่สำเร็จ (กู้คืนพิกัดสคริปต์เริ่มต้น)
+    checkpoints = defaultCheckpoints;
+    saveCpsData();
+    renderCheckpointLists();
+    if(lMap) renderMapElements();
+    showToast('⚙️ ระบบกู้คืนพิกัดเริ่มต้น 7 จุดทดแทนเรียบร้อย');
+    if(onDone) onDone(defaultCheckpoints);
   });
 }
 
@@ -1816,14 +1823,15 @@ function syncPullRoutes(onDone) {
   fetch(url + '?action=getRoutes')
   .then(function(r){ return r.json(); })
   .then(function(d){
-    if(d.ok && d.data) {
-      localStorage.setItem('kspRoutes', JSON.stringify(d.data));
-      routes = d.data; 
-      showToast('✅ ดึงเส้นทาง ' + d.data.length + ' เส้น');
+    var rawRoutes = (d && d.data) ? d.data : d;
+    if(rawRoutes && rawRoutes.length > 0) {
+      localStorage.setItem('kspRoutes', JSON.stringify(rawRoutes));
+      routes = rawRoutes; 
+      showToast('✅ ดึงเส้นทาง ' + rawRoutes.length + ' เส้น');
       renderRouteLists();
-      if(onDone) onDone(d.data);
+      if(onDone) onDone(rawRoutes);
     } else {
-      showToast('❌ ' + (d.error||'ดึงเส้นทางไม่สำเร็จ'));
+      showToast('❌ ดึงเส้นทางจาก Cloud ไม่สำเร็จ');
     }
   })
   .catch(function(e){ showToast('❌ ' + e.message); });
