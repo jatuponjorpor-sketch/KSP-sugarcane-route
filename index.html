@@ -423,6 +423,31 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Sarabun',sans-serif;backgroun
   </div>
 </div>
 
+<div class="modal-wrap" id="cloudModal" style="display:none">
+  <div class="modal-box">
+    <div class="modal-handle"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div style="font-size:15px;font-weight:600">☁️ ตั้งค่า Google Sheets Cloud API</div>
+      <button onclick="closeCloudConfig()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--gr)">✕</button>
+    </div>
+    <div class="admin-field"><label>ชื่อผู้ขับขี่ / ทะเบียนรถ</label><input class="admin-input" id="cloudDriver" placeholder="เช่น นายสมชาย (KSP-01)"></div>
+    <div class="admin-field"><label>Web App URL (จาก Google Apps Script)</label><input class="admin-input" id="cloudUrl" placeholder="https://script.google.com/macros/s/.../exec"></div>
+    <div class="admin-field"><label>ระบบอัปเดตพิกัดอัตโนมัติ (วินาที)</label>
+      <select class="admin-sel" id="cloudAutoSync">
+        <option value="0">❌ ปิด (ซิงค์เฉพาะตอนจบทริป)</option>
+        <option value="10">⏱️ ทุก 10 วินาที (แนะนำสำหรับการติดตาม Real-time)</option>
+        <option value="30">⏱️ ทุก 30 วินาที</option>
+        <option value="60">⏱️ ทุก 1 นาที</option>
+      </select>
+    </div>
+    <button onclick="cloudTest()" style="width:100%;padding:8px;border-radius:var(--r);background:var(--bg);color:var(--bl3);border:1px solid var(--bl);font-size:12px;font-weight:600;cursor:pointer;margin-top:10px">📡 ทดสอบสัญญาณ (Ping Test)</button>
+    <div class="admin-btn-row" style="margin-top:12px">
+      <button onclick="closeCloudConfig()" style="flex:1;padding:10px;border-radius:var(--r);background:var(--bg);color:var(--dk);border:1px solid var(--bd);font-size:13px;cursor:pointer">ยกเลิก</button>
+      <button onclick="saveCloudConfig()" class="admin-save">💾 บันทึกการเชื่อมต่อ</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-wrap" id="adminModal" style="display:none">
   <div class="modal-box">
     <div class="modal-handle"></div>
@@ -1548,11 +1573,9 @@ function cloudPull() {
     if(!data) return;
     if(data.length===0){showToast('⚠️ ไม่พบข้อมูลใน Cloud สำหรับเส้นทางนี้');return;}
     
-    // บันทึกลงตัวแปรหลักและถังหน่วยความจำถาวรให้เป็นชื่อเดียวกันทั้งหมด
     checkpoints = data; 
     saveCpsData();
     
-    // สั่งวาด UI ทุกหน้าจอที่เชื่อมโยงกับจุดตรวจสอบใหม่ทันที
     renderCheckpointLists();
     if(lMap) renderMapElements();
     
@@ -1655,6 +1678,7 @@ function goScreen(id) {
   }
 }
 
+// ===== SYSTEM UTILITIES =====
 function showToast(msg) {
   var t = document.getElementById('toast'); if(!t) return;
   t.textContent = msg; t.classList.add('show');
@@ -1679,7 +1703,7 @@ window.addEventListener('DOMContentLoaded', function() {
   document.body.addEventListener('click', function() { initAudio(); }, { once: true });
 });
 
-// ===== CLOUD SYNC FUNCTIONS (FIXED) =====
+// ===== CLOUD SYNC FUNCTIONS =====
 var SYNC_LOCK = false;
 
 function getCloudUrl() {
@@ -1778,7 +1802,7 @@ function syncPullRoutes(onDone) {
   .then(function(d){
     if(d.ok && d.data) {
       localStorage.setItem('kspRoutes', JSON.stringify(d.data));
-      routes = d.data; // อัปเดตตัวแปรหลัก
+      routes = d.data; 
       showToast('✅ ดึงเส้นทาง ' + d.data.length + ' เส้น');
       if(onDone) onDone(d.data);
     } else {
