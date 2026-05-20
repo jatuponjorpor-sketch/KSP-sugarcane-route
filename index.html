@@ -1547,8 +1547,10 @@ function exportRouteData() {
 
 function cloudPushCurrentRoute() {
   var rid = document.getElementById('reEditId').value || currentRouteId;
+  if(!rid || rid === 'undefined' || String(rid).trim() === '') rid = 'R01';
+  rid = String(rid).trim();
   var cps = checkpoints.filter(function(c){return c.routeId===rid;});
-  if(!cps.length){ showToast('⚠️ ไม่มีจุดในเส้นทางนี้'); return; }
+  if(!cps.length){ showToast('⚠️ ไม่มีจุดในเส้นทาง ' + rid); return; }
   syncPushCheckpoints(cps, rid, function(ok){
     if(ok) renderRouteCpList(rid);
   });
@@ -1772,11 +1774,18 @@ function cloudPull() {
 
 function cloudPush() {
   if(!cloudUrl){ showToast('❌ ยังไม่ได้ตั้งค่า URL'); openCloudConfig(); return; }
-  var cps = checkpoints.filter(function(c){ return c.routeId===currentRouteId; });
-  if(!cps.length){ showToast('⚠️ ไม่มีจุดอันตรายในเส้นทางนี้'); return; }
+  var rid = currentRouteId;
+  if(!rid || rid === 'undefined' || String(rid).trim() === '') {
+    rid = (routes && routes[0]) ? routes[0].id : 'R01';
+    currentRouteId = rid;
+    localStorage.setItem('kspCurrentRouteId', rid);
+  }
+  rid = String(rid).trim();
+  var cps = checkpoints.filter(function(c){ return c.routeId===rid; });
+  if(!cps.length){ showToast('⚠️ ไม่มีจุดในเส้นทาง ' + rid); return; }
   var pBtn=document.getElementById('cloudPushBtn');
   if(pBtn){pBtn.textContent='⏳...';pBtn.disabled=true;}
-  syncPushCheckpoints(cps, currentRouteId||'R01', function(ok){
+  syncPushCheckpoints(cps, rid, function(ok){
     if(pBtn){pBtn.textContent='📤 อัปโหลด';pBtn.disabled=false;}
   });
 }
@@ -1915,13 +1924,20 @@ function saveCloudUrl(url) {
 function syncPushCheckpoints(cps, routeId, onDone) {
   var url = getCloudUrl();
   if(!url){ showToast('❌ ยังไม่ได้ตั้งค่า URL'); if(onDone) onDone(false); return; }
+  // Validate routeId - ป้องกัน undefined
+  if(!routeId || routeId === 'undefined' || routeId === undefined || routeId === null || String(routeId).trim() === '') {
+    routeId = currentRouteId || 'R01';
+    if(!routeId || routeId === 'undefined') routeId = 'R01';
+    showToast('⚠️ ใช้ route_id = ' + routeId);
+  }
+  routeId = String(routeId).trim();
   if(SYNC_LOCK){ showToast('⏳ กำลัง sync...'); return; }
   SYNC_LOCK = true;
-  showToast('📤 กำลังอัปโหลด...');
+  showToast('📤 กำลังอัปโหลด ' + routeId + '...');
   fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain' },
-    body: JSON.stringify({ action:'saveCheckpoints', route_id:routeId||'R01', data:cps, user:cloudDriver||'admin' })
+    body: JSON.stringify({ action:'saveCheckpoints', route_id:routeId, data:cps, user:cloudDriver||'admin' })
   })
   .then(function(r){ return r.json(); })
   .then(function(d){
