@@ -552,6 +552,41 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Sarabun',sans-serif;backgroun
   </div>
 </div>
 
+
+<div class="modal-wrap" id="cloudModal" style="display:none">
+  <div class="modal-box">
+    <div class="modal-handle"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div style="font-size:15px;font-weight:600;color:var(--dk)">☁️ ตั้งค่า Cloud Sync</div>
+      <button onclick="closeCloudConfig()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--gr)">✕</button>
+    </div>
+    <div style="font-size:11px;color:var(--gr);line-height:1.6;margin-bottom:12px;background:var(--bg);border-radius:var(--r);padding:9px 12px">
+      วาง <b>Web App URL</b> จาก Google Apps Script → Deploy → New deployment
+    </div>
+    <div class="admin-field">
+      <label>Google Apps Script URL *</label>
+      <input class="admin-input" id="cloudUrl" placeholder="https://script.google.com/macros/s/.../exec" style="font-family:monospace;font-size:11px">
+    </div>
+    <div class="admin-field">
+      <label>ชื่อผู้ขับขี่ / ผู้ใช้งาน</label>
+      <input class="admin-input" id="cloudDriver" placeholder="เช่น นายจตุพล นามพุทธา">
+    </div>
+    <div class="admin-field">
+      <label>Auto-Sync อัตโนมัติ</label>
+      <select class="admin-sel" id="cloudAutoSync">
+        <option value="0">❌ ปิด (Manual)</option>
+        <option value="30">⏱️ ทุก 30 วินาที</option>
+        <option value="60">⏱️ ทุก 1 นาที</option>
+        <option value="300">⏱️ ทุก 5 นาที</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button onclick="cloudTest()" style="flex:1;padding:11px;border-radius:var(--r);background:var(--bg);color:var(--bl3);border:1px solid var(--bl);font-size:12px;font-weight:600;cursor:pointer">🔌 ทดสอบ</button>
+      <button onclick="saveCloudConfig()" style="flex:2;padding:11px;border-radius:var(--r);background:var(--gn);color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer">💾 บันทึก</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-wrap" id="changePinModal" style="display:none">
   <div class="modal-box">
     <div class="modal-handle"></div>
@@ -1692,7 +1727,16 @@ function importData() {
 }
 
 // ===== GOOGLE SHEETS CLOUD SYNC =====
-function openCloudConfig() { document.getElementById('cloudModal').style.display = "flex"; }
+function openCloudConfig() {
+  // โหลดค่าที่บันทึกไว้ใส่ input
+  var urlEl = document.getElementById('cloudUrl');
+  var driverEl = document.getElementById('cloudDriver');
+  var syncEl = document.getElementById('cloudAutoSync');
+  if(urlEl) urlEl.value = cloudUrl || localStorage.getItem('kspCloudUrl') || '';
+  if(driverEl) driverEl.value = cloudDriver || '';
+  if(syncEl) syncEl.value = cloudAutoSync || 0;
+  document.getElementById('cloudModal').style.display = 'flex';
+}
 function closeCloudConfig() { document.getElementById('cloudModal').style.display = "none"; }
 function saveCloudConfig() {
   cloudUrl = document.getElementById('cloudUrl').value.trim();
