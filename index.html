@@ -1746,6 +1746,7 @@ function saveCloudConfig() {
   cloudAutoSync = parseInt(document.getElementById('cloudAutoSync').value) || 0;
   
   localStorage.setItem('kspCloud', JSON.stringify({ url: cloudUrl, driver: cloudDriver, autoSync: cloudAutoSync }));
+  localStorage.setItem('kspCloudUrl', cloudUrl);  // 🆕 save แยก เพื่อให้ getCloudUrl() อ่านได้
   closeCloudConfig();
   
   var statusEl = document.getElementById('cloudStatus');
@@ -1904,6 +1905,44 @@ window.addEventListener('DOMContentLoaded', function() {
   renderRouteLists(); renderCheckpointLists(); renderHistoryList();
   setupCloudIntervalTimer();
   document.body.addEventListener('click', function() { initAudio(); }, { once: true });
+
+  // 🆕 Auto-bootstrap: ถ้ามี URL → ดึงเส้นทาง + จุดทั้งหมดจาก Cloud ทันที
+  setTimeout(function(){
+    var url = getCloudUrl();
+    if(!url) {
+      // เครื่องใหม่ - แนะนำให้ตั้งค่า
+      setTimeout(function(){
+        showToast('💡 เปิดครั้งแรก กรุณาไปที่จัดการ → ตั้งค่า URL Cloud');
+      }, 1500);
+      return;
+    }
+    showToast('🔄 กำลังโหลดข้อมูลจาก Cloud...');
+    // 1. ดึงรายการเส้นทางทั้งหมด
+    syncPullRoutes(function(rts){
+      if(!rts || rts.length===0) return;
+      // 2. set current route ถ้ายังไม่มี
+      if(!currentRouteId || currentRouteId==='undefined' || !rts.find(function(r){return r.id===currentRouteId;})){
+        currentRouteId = rts[0].id;
+        localStorage.setItem('kspCurrentRouteId', currentRouteId);
+      }
+      // 3. ดึงจุดอันตรายของทุก route ทีละเส้น
+      var totalLoaded = 0;
+      var pending = rts.length;
+      rts.forEach(function(r){
+        syncPullCheckpoints(r.id, function(cps){
+          pending--;
+          if(cps && cps.length) totalLoaded += cps.length;
+          if(pending===0){
+            // เสร็จทุก route แล้ว
+            renderRouteLists();
+            renderCheckpointLists();
+            if(lMap) renderMapElements();
+            showToast('✅ โหลด '+rts.length+' เส้นทาง · '+totalLoaded+' จุด สำเร็จ');
+          }
+        });
+      });
+    });
+  }, 600);
 });
 
 // ===== CLOUD SYNC CORE FUNCTIONS =====
