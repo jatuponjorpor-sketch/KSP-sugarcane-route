@@ -2032,14 +2032,30 @@ function syncPullCheckpoints(routeId, onDone) {
         var t = cp.type || 'danger';
         var def = TYPE_DEFAULTS[t] || TYPE_DEFAULTS['danger'];
         
-        // 🛠️ จุดแก้ไขสำคัญ: ป้องกันระบบค้างจากข้อมูลคอลัมน์กฎความปลอดภัย (BBS) 
-        // ถ้าข้อมูลจาก Sheets ส่งมาเป็นข้อความดิบยาว ๆ ให้ทำการแตกตัวแปรด้วยจุลภาค (,) และลบช่องว่างทิ้งทันที
+        // 🛠️ คลี่คลายปมวงเล็บเหลี่ยมครอบข้อความ ["..."] จาก Google Sheets
         var processedRules = [];
-        if (Array.isArray(cp.rules)) {
-          processedRules = cp.rules;
-        } else if (cp.rules && String(cp.rules).trim() !== '') {
-          processedRules = String(cp.rules).split(',').map(function(r) { return r.trim(); });
+        if (cp.rules) {
+          var rString = String(cp.rules).trim();
+          
+          // ตรวจจับและทำลายวงเล็บเหลี่ยมครอบสไตล์ JSON String ที่ค้างมาจากแผ่นงาน
+          if (rString.indexOf('[') === 0) {
+            try {
+              // พยายามถอดรหัสแบบ Array แท้
+              var parsed = JSON.parse(rString);
+              if (Array.isArray(parsed)) processedRules = parsed;
+            } catch(e) {
+              // ถ้าถอด JSON ไม่ผ่าน ให้ล้างวงเล็บเหลี่ยมดิบ ๆ ออกไปเลย
+              rString = rString.replace(/^\["|"]$/g, '').replace(/^\['|']$/g, '').replace(/^\[|]$/g, '');
+              processedRules = rString.split(',').map(function(r) { return r.trim(); });
+            }
+          } else {
+            // กรณีเป็นข้อความปกติ ไม่มีวงเล็บเหลี่ยมครอบ
+            processedRules = rString.split(',').map(function(r) { return r.trim(); });
+          }
         }
+
+        // ล้างค่าข้อความขยะที่เหลือใน Array (เช่น ลบกล่องว่างเปล่าออก)
+        processedRules = processedRules.filter(function(r) { return r !== "" && r !== "[]"; });
 
         return {
           id:      parseInt(cp.id) >= 0 ? parseInt(cp.id) : idx,
@@ -2052,7 +2068,7 @@ function syncPullCheckpoints(routeId, onDone) {
           title:   cp.title || cp.name || '',
           desc:    cp.desc || '',
           speak:   cp.speak || '',
-          rules:   processedRules, // ส่งค่า Array ที่ผ่านการล้างข้อมูลบั๊กเรียบร้อยแล้วไปใช้งาน
+          rules:   processedRules, 
           alert:   cp.alert === true || cp.alert === 'TRUE' || cp.alert === 'true',
           emoji:   cp.emoji || def.emoji,
           col:     cp.col  || def.col,
