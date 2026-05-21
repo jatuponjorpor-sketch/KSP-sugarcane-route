@@ -2016,20 +2016,31 @@ function syncPullCheckpoints(routeId, onDone) {
 
     if(rawList && rawList.length > 0) {
       var TYPE_DEFAULTS = {
-        'curve':    {col:'#E24B4A',bg:'#FCEBEB',emoji:'⚠️'},
-        'junction': {col:'#BA7517',bg:'#FAEEDA',emoji:'✚'},
-        'merge':    {col:'#BA7517',bg:'#FAEEDA',emoji:'🔀'},
-        'narrow':   {col:'#E24B4A',bg:'#FCEBEB',emoji:'⇔'},
-        'downhill': {col:'#E24B4A',bg:'#FCEBEB',emoji:'⛰️'},
-        'community':{col:'#993556',bg:'#FBEAF0',emoji:'🏘️'},
-        'danger':   {col:'#E24B4A',bg:'#FCEBEB',emoji:'⚠️'},
-        'warn':     {col:'#BA7517',bg:'#FAEEDA',emoji:'🚧'},
-        'start':    {col:'#1D9E75',bg:'#E1F5EE',emoji:'📍'},
-        'arrive':   {col:'#1D9E75',bg:'#E1F5EE',emoji:'✅'},
+        'curve':     {col:'#E24B4A',bg:'#FCEBEB',emoji:'⚠️'},
+        'junction':  {col:'#BA7517',bg:'#FAEEDA',emoji:'✚'},
+        'merge':     {col:'#BA7517',bg:'#FAEEDA',emoji:'🔀'},
+        'narrow':    {col:'#E24B4A',bg:'#FCEBEB',emoji:'⇔'},
+        'downhill':  {col:'#E24B4A',bg:'#FCEBEB',emoji:'⛰️'},
+        'community': {col:'#993556',bg:'#FBEAF0',emoji:'🏘️'},
+        'danger':    {col:'#E24B4A',bg:'#FCEBEB',emoji:'⚠️'},
+        'warn':      {col:'#BA7517',bg:'#FAEEDA',emoji:'🚧'},
+        'start':     {col:'#1D9E75',bg:'#E1F5EE',emoji:'📍'},
+        'arrive':    {col:'#1D9E75',bg:'#E1F5EE',emoji:'✅'},
       };
+      
       var mapped = rawList.map(function(cp, idx) {
         var t = cp.type || 'danger';
         var def = TYPE_DEFAULTS[t] || TYPE_DEFAULTS['danger'];
+        
+        // 🛠️ จุดแก้ไขสำคัญ: ป้องกันระบบค้างจากข้อมูลคอลัมน์กฎความปลอดภัย (BBS) 
+        // ถ้าข้อมูลจาก Sheets ส่งมาเป็นข้อความดิบยาว ๆ ให้ทำการแตกตัวแปรด้วยจุลภาค (,) และลบช่องว่างทิ้งทันที
+        var processedRules = [];
+        if (Array.isArray(cp.rules)) {
+          processedRules = cp.rules;
+        } else if (cp.rules && String(cp.rules).trim() !== '') {
+          processedRules = String(cp.rules).split(',').map(function(r) { return r.trim(); });
+        }
+
         return {
           id:      parseInt(cp.id) >= 0 ? parseInt(cp.id) : idx,
           routeId: cp.routeId || cp.route_id || targetRoute,
@@ -2041,7 +2052,7 @@ function syncPullCheckpoints(routeId, onDone) {
           title:   cp.title || cp.name || '',
           desc:    cp.desc || '',
           speak:   cp.speak || '',
-          rules:   Array.isArray(cp.rules) ? cp.rules : [],
+          rules:   processedRules, // ส่งค่า Array ที่ผ่านการล้างข้อมูลบั๊กเรียบร้อยแล้วไปใช้งาน
           alert:   cp.alert === true || cp.alert === 'TRUE' || cp.alert === 'true',
           emoji:   cp.emoji || def.emoji,
           col:     cp.col  || def.col,
