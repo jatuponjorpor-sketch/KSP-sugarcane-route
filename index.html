@@ -1549,10 +1549,20 @@ function cloudPushCurrentRoute() {
   var rid = document.getElementById('reEditId').value || currentRouteId;
   if(!rid || rid === 'undefined' || String(rid).trim() === '') rid = 'R01';
   rid = String(rid).trim();
-  var cps = checkpoints.filter(function(c){return c.routeId===rid;});
+  
+  // 🛠️ ปรับปรุงประสิทธิภาพ: ดักจับทั้งคีย์ c.routeId และ c.route_id 
+  // เพื่อให้มั่นใจว่าระบบจะกวาดเอาพิกัดทุกจุดในเลน R02 ส่งขึ้นคลาวด์ได้ครบ 100% ไม่ตกร่อง
+  var cps = checkpoints.filter(function(c){
+    var itemRid = c.route_id || c.routeId;
+    return itemRid ? String(itemRid).trim() === rid : false;
+  });
+  
   if(!cps.length){ showToast('⚠️ ไม่มีจุดในเส้นทาง ' + rid); return; }
+  
   syncPushCheckpoints(cps, rid, function(ok){
-    if(ok) renderRouteCpList(rid);
+    if(ok) {
+      if(typeof renderRouteCpList === 'function') renderRouteCpList(rid);
+    }
   });
 }
 
@@ -1960,43 +1970,24 @@ function saveCloudUrl(url) {
   if(el) el.value = url;
 }
 
-function syncPushCheckpoints(cps, routeId, onDone) {
-  var url = getCloudUrl();
-  if(!url){ showToast('❌ ยังไม่ได้ตั้งค่า URL'); if(onDone) onDone(false); return; }
-  // Validate routeId - ป้องกัน undefined
-  if(!routeId || routeId === 'undefined' || routeId === undefined || routeId === null || String(routeId).trim() === '') {
-    routeId = currentRouteId || 'R01';
-    if(!routeId || routeId === 'undefined') routeId = 'R01';
-    showToast('⚠️ ใช้ route_id = ' + routeId);
-  }
-  routeId = String(routeId).trim();
-  if(SYNC_LOCK){ showToast('⏳ กำลัง sync...'); return; }
-  SYNC_LOCK = true;
-  showToast('📤 กำลังอัปโหลด ' + routeId + '...');
-  fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain' },
-    body: JSON.stringify({ action:'saveCheckpoints', route_id:routeId, data:cps, user:cloudDriver||'admin' })
-  })
-  .then(function(r){ return r.json(); })
-  .then(function(d){
-    SYNC_LOCK = false;
-    if(d.ok || d.saved) {
-      var now = new Date().toLocaleString('th-TH');
-      localStorage.setItem('kspLastSync', now);
-      var el = document.getElementById('cloudLastSync');
-      if(el) el.textContent = 'Sync ล่าสุด: ' + now + ' (' + (d.saved||cps.length) + ' จุด)';
-      showToast('✅ อัปโหลด ' + (d.saved||cps.length) + ' จุด สำเร็จ');
-      if(onDone) onDone(true);
-    } else {
-      showToast('❌ ' + (d.error||'อัปโหลดไม่สำเร็จ'));
-      if(onDone) onDone(false);
+function cloudPushCurrentRoute() {
+  var rid = document.getElementById('reEditId').value || currentRouteId;
+  if(!rid || rid === 'undefined' || String(rid).trim() === '') rid = 'R01';
+  rid = String(rid).trim();
+  
+  // 🛠️ ปรับปรุงประสิทธิภาพ: ดักจับทั้งคีย์ c.routeId และ c.route_id 
+  // เพื่อให้มั่นใจว่าระบบจะกวาดเอาพิกัดทุกจุดในเลน R02 ส่งขึ้นคลาวด์ได้ครบ 100% ไม่ตกร่อง
+  var cps = checkpoints.filter(function(c){
+    var itemRid = c.route_id || c.routeId;
+    return itemRid ? String(itemRid).trim() === rid : false;
+  });
+  
+  if(!cps.length){ showToast('⚠️ ไม่มีจุดในเส้นทาง ' + rid); return; }
+  
+  syncPushCheckpoints(cps, rid, function(ok){
+    if(ok) {
+      if(typeof renderRouteCpList === 'function') renderRouteCpList(rid);
     }
-  })
-  .catch(function(e){
-    SYNC_LOCK = false;
-    showToast('❌ ' + e.message);
-    if(onDone) onDone(false);
   });
 }
 
