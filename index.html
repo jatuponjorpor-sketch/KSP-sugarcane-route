@@ -2031,13 +2031,15 @@ function syncPullCheckpoints(routeId, onDone) {
       };
       
       var mapped = rawList.map(function(cp, idx) {
-        var t = cp.type || 'danger';
+        // 1. ดักจับคีย์ประเภทป้ายความเสี่ยง
+        var t = cp.type || cp.Type || 'danger';
         var def = TYPE_DEFAULTS[t] || TYPE_DEFAULTS['danger'];
         
-        // 🛠️ ถอดรหัส JSON rules ที่ส่งมาจากคำสั่ง JSON.stringify ของ Apps Script หลังบ้าน
+        // 2. ถอดรหัสมาตรการความปลอดภัย (Rules)
         var processedRules = [];
-        if (cp.rules) {
-          var rString = String(cp.rules).trim();
+        var rawRules = cp.rules || cp.Rules || cp.rules_v;
+        if (rawRules) {
+          var rString = String(rawRules).trim();
           if (rString.indexOf('[') === 0) {
             try {
               var parsed = JSON.parse(rString);
@@ -2052,31 +2054,39 @@ function syncPullCheckpoints(routeId, onDone) {
         }
         processedRules = processedRules.filter(function(r) { return r !== "" && r !== "[]"; });
 
-        var alertStr = cp.alert !== undefined ? String(cp.alert).trim() : 'false';
-        var isAlertActive = cp.alert === true || alertStr === 'TRUE' || alertStr === 'true';
+        // 3. ตรวจสอบระบบแจ้งเตือน (Alert) ป้องกันตัวพิมพ์เล็ก-ใหญ่จากคลาวด์
+        var rawAlert = cp.alert !== undefined ? cp.alert : (cp.Alert !== undefined ? cp.Alert : 'false');
+        var alertStr = String(rawAlert).trim();
+        var isAlertActive = rawAlert === true || alertStr === 'TRUE' || alertStr === 'true';
 
-        var itemRouteId = cp.route_id || cp.routeId || targetRoute;
+        // 4. ดักจับและทำความสะอาดรหัสเส้นทาง (Route ID) ครอบคลุมทุกรูปแบบคีย์
+        var itemRouteId = cp.route_id || cp.routeId || cp.RouteId || cp.routeId_v || targetRoute;
         if (itemRouteId) itemRouteId = String(itemRouteId).trim();
 
+        // 5. 🛠️ จุดสำคัญ: แก้ปัญหาการดึงพิกัดหลุดช่อง ดักจับทั้งแบบย่อ (lat/lng) และแบบเต็ม (latitude/longitude)
+        var parsedLat = parseFloat(cp.lat !== undefined ? cp.lat : cp.latitude);
+        var parsedLng = parseFloat(cp.lng !== undefined ? cp.lng : cp.longitude);
+
         return {
-          id:      parseInt(cp.id) >= 0 ? parseInt(cp.id) : idx,
+          id:      parseInt(cp.id !== undefined ? cp.id : cp.Id) >= 0 ? parseInt(cp.id !== undefined ? cp.id : cp.Id) : idx,
           routeId: itemRouteId,
-          name:    cp.name || '',
-          km:      cp.km || (idx + ' กม.'),
+          name:    cp.name || cp.Name || '',
+          km:      cp.km || cp.Km || (idx + ' กม.'),
           type:    t,
-          lat:     parseFloat(cp.lat) || 0,
-          lng:     parseFloat(cp.lng) || 0,
-          title:   cp.title || cp.name || '',
-          desc:    cp.desc || '',
-          speak:   cp.speak || '',
+          lat:     isNaN(parsedLat) ? 0 : parsedLat,
+          lng:     isNaN(parsedLng) ? 0 : parsedLng,
+          title:   cp.title || cp.Title || cp.name || '',
+          desc:    cp.desc || cp.Desc || '',
+          speak:   cp.speak || cp.Speak || '',
           rules:   processedRules, 
           alert:   isAlertActive, 
-          emoji:   cp.emoji || def.emoji,
+          emoji:   cp.emoji || cp.Emoji || def.emoji,
           col:     cp.col  || def.col,
           bg:      cp.bg   || def.bg,
         };
       });
 
+      // ลบจุดตรวจสอบเก่าเฉพาะเส้นทางปัจจุบันออก เพื่ออัปเดตข้อมูลชุดใหม่ที่สมบูรณ์แทนที่
       checkpoints = checkpoints.filter(function(c){ return String(c.routeId).trim() !== targetRoute; });
       checkpoints = checkpoints.concat(mapped);
       localStorage.setItem('kspCps', JSON.stringify(checkpoints));
