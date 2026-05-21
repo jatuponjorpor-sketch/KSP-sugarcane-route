@@ -2003,8 +2003,10 @@ function syncPushCheckpoints(cps, routeId, onDone) {
 function syncPullCheckpoints(routeId, onDone) {
   var url = getCloudUrl();
   if(!url){ showToast('❌ ยังไม่ได้ตั้งค่า URL'); if(onDone) onDone(null); return; }
-  showToast('📥 กำลังดึงข้อมูล...');
+  showToast('📥 กำลังดึงข้อมูลจาก Cloud...');
+  
   var targetRoute = routeId || currentRouteId || 'R01';
+  targetRoute = String(targetRoute).trim();
   
   fetch(url + '?action=getCheckpoints&route_id=' + encodeURIComponent(targetRoute))
   .then(function(r){ return r.json(); })
@@ -2032,34 +2034,33 @@ function syncPullCheckpoints(routeId, onDone) {
         var t = cp.type || 'danger';
         var def = TYPE_DEFAULTS[t] || TYPE_DEFAULTS['danger'];
         
-        // 🛠️ คลี่คลายปมวงเล็บเหลี่ยมครอบข้อความ ["..."] จาก Google Sheets
+        // 🛠️ ถอดรหัส JSON rules ที่ส่งมาจากคำสั่ง JSON.stringify ของ Apps Script หลังบ้าน
         var processedRules = [];
         if (cp.rules) {
           var rString = String(cp.rules).trim();
-          
-          // ตรวจจับและทำลายวงเล็บเหลี่ยมครอบสไตล์ JSON String ที่ค้างมาจากแผ่นงาน
           if (rString.indexOf('[') === 0) {
             try {
-              // พยายามถอดรหัสแบบ Array แท้
               var parsed = JSON.parse(rString);
               if (Array.isArray(parsed)) processedRules = parsed;
             } catch(e) {
-              // ถ้าถอด JSON ไม่ผ่าน ให้ล้างวงเล็บเหลี่ยมดิบ ๆ ออกไปเลย
               rString = rString.replace(/^\["|"]$/g, '').replace(/^\['|']$/g, '').replace(/^\[|]$/g, '');
               processedRules = rString.split(',').map(function(r) { return r.trim(); });
             }
           } else {
-            // กรณีเป็นข้อความปกติ ไม่มีวงเล็บเหลี่ยมครอบ
             processedRules = rString.split(',').map(function(r) { return r.trim(); });
           }
         }
-
-        // ล้างค่าข้อความขยะที่เหลือใน Array (เช่น ลบกล่องว่างเปล่าออก)
         processedRules = processedRules.filter(function(r) { return r !== "" && r !== "[]"; });
+
+        var alertStr = cp.alert !== undefined ? String(cp.alert).trim() : 'false';
+        var isAlertActive = cp.alert === true || alertStr === 'TRUE' || alertStr === 'true';
+
+        var itemRouteId = cp.route_id || cp.routeId || targetRoute;
+        if (itemRouteId) itemRouteId = String(itemRouteId).trim();
 
         return {
           id:      parseInt(cp.id) >= 0 ? parseInt(cp.id) : idx,
-          routeId: cp.routeId || cp.route_id || targetRoute,
+          routeId: itemRouteId,
           name:    cp.name || '',
           km:      cp.km || (idx + ' กม.'),
           type:    t,
@@ -2069,33 +2070,32 @@ function syncPullCheckpoints(routeId, onDone) {
           desc:    cp.desc || '',
           speak:   cp.speak || '',
           rules:   processedRules, 
-          alert:   cp.alert === true || cp.alert === 'TRUE' || cp.alert === 'true',
+          alert:   isAlertActive, 
           emoji:   cp.emoji || def.emoji,
           col:     cp.col  || def.col,
           bg:      cp.bg   || def.bg,
         };
       });
 
-      // ลบของเก่าของ route นี้ แล้วใส่ใหม่
-      checkpoints = checkpoints.filter(function(c){ return c.routeId !== targetRoute; });
+      checkpoints = checkpoints.filter(function(c){ return String(c.routeId).trim() !== targetRoute; });
       checkpoints = checkpoints.concat(mapped);
       localStorage.setItem('kspCps', JSON.stringify(checkpoints));
 
       var now = new Date().toLocaleString('th-TH');
       var el = document.getElementById('cloudLastSync');
-      if(el) el.textContent = 'ดึงข้อมูล: ' + now + ' (' + mapped.length + ' จุด)';
+      if(el) el.textContent = 'ซิงค์สำเร็จ: ' + now + ' (' + mapped.length + ' จุด)';
       
       renderCheckpointLists();
       if(lMap) renderMapElements();
-      showToast('✅ ดึงข้อมูล ' + mapped.length + ' จุด สำเร็จ');
+      showToast('✅ ดึงข้อมูลแผ่นงานสำเร็จ ' + mapped.length + ' จุด');
       if(onDone) onDone(mapped);
     } else {
-      showToast('⚠️ ไม่พบข้อมูลจุดใน Cloud สำหรับเส้นทางนี้');
+      showToast('⚠️ ไม่พบข้อมูลจุดตรวจสอบในเส้นทางนี้บนระบบคลาวด์');
       if(onDone) onDone([]);
     }
   })
   .catch(function(e){
-    showToast('❌ ' + e.message);
+    showToast('❌ ระบบตรวจพบข้อผิดพลาด: ' + e.message);
     if(onDone) onDone(null);
   });
 }
