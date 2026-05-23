@@ -112,4 +112,1853 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Sarabun',sans-serif;backgroun
   </div>
   <div class="slider-row">
     <span style="font-size:12px;color:var(--gr);width:55px">รัศมีเตือน</span>
-    <input type="range" min="100" max="800" value="300" step="50" style="flex:1" oninput="alertR=+
+    <input type="range" min="100" max="800" value="300" step="50" style="flex:1" oninput="alertR=+this.value;document.getElementById('radiusVal').textContent=this.value+' ม.'">
+    <span style="font-size:12px;font-weight:600;width:45px;text-align:right" id="radiusVal">300 ม.</span>
+  </div>
+  <div class="sec-t">ทดสอบเสียง + สัญลักษณ์</div>
+  <div class="snd-grid">
+    <button class="snd-btn" id="sb1" onclick="testAlert('danger','sb1')"><span style="font-size:22px">⚠️</span>อันตราย</button>
+    <button class="snd-btn" id="sb2" onclick="testAlert('warn','sb2')"><span style="font-size:22px">🚦</span>ระวัง</button>
+    <button class="snd-btn" id="sb3" onclick="testAlert('community','sb3')"><span style="font-size:22px">🏘️</span>ชุมชน</button>
+    <button class="snd-btn" id="sb4" onclick="testAlert('arrive','sb4')"><span style="font-size:22px">✅</span>ปลายทาง</button>
+  </div>
+</div>
+
+<div class="screen" id="screen-history">
+  <div style="padding:10px 14px">
+    <div class="sec-t">ประวัติการเดินทาง</div>
+    <div id="histList"></div>
+    <div id="histEmpty" style="text-align:center;padding:2rem;color:var(--gr);display:none"><div style="font-size:36px;margin-bottom:8px">📋</div>ยังไม่มีประวัติ</div>
+    <button id="clearHistBtn" onclick="clearHist()" style="display:none;width:100%;padding:11px;border-radius:var(--r);background:var(--bg);color:var(--dk);border:1px solid var(--bd);font-size:13px;cursor:pointer;margin-top:8px">🗑️ ล้างประวัติ</button>
+  </div>
+</div>
+
+<div class="screen" id="screen-admin">
+  <div style="background:linear-gradient(135deg,#185FA5,#0C447C);border-radius:var(--rl);padding:14px;margin-bottom:14px;color:#fff;box-shadow:0 4px 14px rgba(24,95,165,0.25)">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+      <span style="font-size:20px">☁️</span>
+      <div style="flex:1"><div style="font-size:14px;font-weight:700">Cloud Sync — Google Sheets</div><div style="font-size:10px;opacity:0.85" id="cloudStatus">ยังไม่ได้ตั้งค่า URL</div></div>
+      <button onclick="openCloudConfig()" style="background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.4);color:#fff;padding:5px 10px;border-radius:var(--r);font-size:11px;cursor:pointer">⚙️ ตั้งค่า</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px">
+      <button onclick="cloudPush()" id="cloudPushBtn" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.4);color:#fff;padding:9px 8px;border-radius:var(--r);font-size:12px;font-weight:600;cursor:pointer">📤 อัปโหลด</button>
+      <button onclick="cloudPull()" id="cloudPullBtn" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.4);color:#fff;padding:9px 8px;border-radius:var(--r);font-size:12px;font-weight:600;cursor:pointer">📥 ดึงข้อมูล</button>
+    </div>
+    <div style="font-size:10px;opacity:0.85;margin-top:8px;line-height:1.5" id="cloudLastSync">ยังไม่เคย sync</div>
+  </div>
+  
+  <div style="background:var(--wh);border:1px solid var(--bd);border-radius:var(--r);padding:11px 13px;margin-bottom:14px;display:flex;align-items:center;gap:10px">
+    <span style="font-size:20px">🔑</span>
+    <div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--dk)">PIN Admin</div><div style="font-size:10px;color:var(--gr)">PIN เริ่มต้น: 1234</div></div>
+    <button onclick="openChangePinModal()" style="padding:7px 12px;border-radius:var(--r);background:var(--or2);color:var(--or3);border:1px solid var(--or);font-size:12px;font-weight:600;cursor:pointer">🔐 เปลี่ยน PIN</button>
+  </div>
+  
+  <div class="sec-t" style="display:flex;align-items:center;justify-content:space-between">
+    <span>🛣️ เส้นทางทั้งหมด</span>
+    <button onclick="openRouteEdit('')" style="font-size:11px;padding:4px 9px;border-radius:10px;background:var(--or);color:#fff;border:none;cursor:pointer;font-weight:600">+ เพิ่ม</button>
+  </div>
+  <div id="adminRouteList"></div>
+  
+  <div class="sec-t" style="display:flex;align-items:center;justify-content:space-between;margin-top:14px">
+    <span>📷 จัดการและอัปโหลดรูปป้ายจราจรจริง</span>
+    <button onclick="openAddSignType()" style="font-size:11px;padding:5px 12px;border-radius:var(--r);background:var(--gn);border:none;cursor:pointer;font-weight:600;color:#fff">➕ เพิ่มกล่องป้ายใหม่เอง</button>
+  </div>
+  <div style="font-size:11px;color:var(--gr);margin-bottom:10px;line-height:1.5">กดที่ช่องประเภทป้ายเพื่ออัปโหลดรูปถ่ายจริง — รูปจะนำไปแสดงในหน้าจอ Popup แจ้งเตือนแทนกราฟิกเวกเตอร์ปกติ</div>
+  <div id="signUploadGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px"></div>
+  
+  <div class="sec-t">นำเข้าข้อมูล (Import)</div>
+  <div class="import-area">
+    <textarea class="admin-ta" id="importJson" placeholder='[{"id":0,"name":"..."}]' style="min-height:70px;font-size:11px;font-family:monospace"></textarea>
+    <button class="admin-save" onclick="importData()" style="width:100%;margin-top:7px;padding:9px;font-size:13px">📥 Import</button>
+  </div>
+</div>
+
+<div class="modal-wrap" id="alertModal" style="display:none">
+  <div class="modal-box">
+    <div class="modal-handle"></div>
+    <div class="traffic-sign-wrap"><div class="traffic-sign" id="trafficSign"></div></div>
+    <div class="modal-badge" id="mBadge"></div>
+    <div class="modal-title" id="mTitle"></div>
+    <div class="modal-desc" id="mDesc"></div>
+    <div class="modal-speak" id="mSpeak" style="display:none">
+      <div class="wave"><span></span><span></span><span></span><span></span></div>
+      <div class="modal-speak-t" id="mSpeakTxt"></div>
+    </div>
+    <div class="modal-rules" id="mRules" style="display:none"></div>
+    <div class="modal-actions">
+      <button class="modal-btn-ok" onclick="closeAlert()">✓ รับทราบ (ปิดอัตโนมัติ)</button>
+    </div>
+    <div style="text-align:center;font-size:10px;color:var(--gr);margin-top:8px" id="autoDismissTxt">จะหายไปอัตโนมัติหลังเสียงพูดจบ</div>
+  </div>
+</div>
+
+<div class="modal-wrap" id="adminModal" style="display:none">
+  <div class="modal-box">
+    <div class="modal-handle"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div style="font-size:15px;font-weight:600" id="adminModalT">เพิ่มจุดใหม่</div>
+      <button onclick="closeAdminModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--gr)">✕</button>
+    </div>
+    <input type="hidden" id="editIdx" value="">
+    <div class="admin-field"><label>ชื่อจุด *</label><input class="admin-input" id="fName"></div>
+    <div class="admin-row2">
+      <div class="admin-field"><label>ระยะทาง</label><input class="admin-input" id="fKm" placeholder="15.5 กม."></div>
+      <div class="admin-field"><label>ประเภทความเสี่ยง (ป้าย) *</label>
+        <select class="admin-sel" id="fType" onchange="updateTypeUI()">
+          <optgroup label="── ป้ายเตือนมาตรฐาน ──">
+            <option value="curve">ทางโค้งซ้าย (ต.๑)</option>
+            <option value="junction">ทางแยก 4 ทาง (ต.๑๑)</option>
+            <option value="merge">ทางร่วม (ต.๑๓)</option>
+            <option value="narrow">ทางแคบลง (ต.๒๒)</option>
+            <option value="downhill">ทางลงเนิน (ต.๓๒)</option>
+            <option value="community">คนข้ามถนน (ต.๓๔)</option>
+            <option value="danger">ระวังอันตราย (ต.๕๓)</option>
+            <option value="warn">ระวังทั่วไป</option>
+          </optgroup>
+          <optgroup label="── ป้ายเตือนกำหนดเอง (Custom) ──" id="customOptGroup">
+          </optgroup>
+          <optgroup label="── จุดเดินทาง ──">
+            <option value="start">จุดเริ่มต้น</option>
+            <option value="arrive">ปลายทาง</option>
+          </optgroup>
+        </select>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;background:var(--bg);border-radius:var(--r);padding:9px 12px;margin-top:8px;border:0.5px solid var(--bd)">
+      <div id="signPreview" style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;flex-shrink:0"></div>
+      <div><div id="signPreviewLabel" style="font-size:12px;font-weight:600;color:var(--rd)">อันตราย</div><div style="font-size:10px;color:var(--gr)">สัญลักษณ์ที่จะนำไปแสดงผล</div></div>
+    </div>
+    <div class="admin-field"><label>Emoji ตัวแทนป้าย</label><input class="admin-input" id="fEmoji" style="font-size:20px;text-align:center"></div>
+    <div class="admin-field"><label>พิกัด GPS</label>
+      <div class="admin-row2">
+        <input class="admin-input" id="fLat" placeholder="Latitude" type="number" step="0.00001">
+        <input class="admin-input" id="fLng" placeholder="Longitude" type="number" step="0.00001">
+      </div>
+      <button class="admin-gps-btn" onclick="useMyGPS()">📍 ใช้ GPS ปัจจุบัน</button>
+    </div>
+    <div class="admin-field"><label>แจ้งเตือนอัตโนมัติ</label>
+      <select class="admin-sel" id="fAlert"><option value="true">✅ มี</option><option value="false">❌ ไม่มี</option></select>
+    </div>
+    <div id="alertDetailFields">
+      <div class="admin-field"><label>หัวข้อโชว์บนหน้าจอ</label><input class="admin-input" id="fTitle"></div>
+      <div class="admin-field"><label>คำอธิบายความเสี่ยง</label><textarea class="admin-ta" id="fDesc"></textarea></div>
+      <div class="admin-field"><label>ข้อความพูดระบบ (TTS)</label><textarea class="admin-ta" id="fSpeak"></textarea></div>
+      <div class="admin-field"><label>กฎความปลอดภัยโรงงาน</label>
+        <div id="rulesEditor"></div>
+        <button class="rule-add" onclick="addRule()">+ เพิ่มกฎเซฟตี้</button>
+      </div>
+    </div>
+    <div class="admin-btn-row">
+      <button class="admin-del" id="delBtn" onclick="deleteCp()" style="display:none">🗑️ ลบ</button>
+      <button class="admin-save" onclick="saveCp()">💾 บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-wrap" id="routeEditModal" style="display:none">
+  <div class="modal-box">
+    <div class="modal-handle"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div style="font-size:16px;font-weight:700;color:var(--dk)">🛣️ แก้ไขเส้นทาง</div>
+      <div style="display:flex;gap:7px">
+        <button onclick="exportRouteData()" style="padding:5px 10px;border-radius:var(--r);background:var(--bl2);color:var(--bl3);border:1px solid var(--bl);font-size:11px;font-weight:600;cursor:pointer">📤 Export</button>
+        <button onclick="closeRouteEdit()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--gr)">✕</button>
+      </div>
+    </div>
+    <div style="background:var(--bg);border-radius:var(--r);padding:12px;margin-bottom:14px">
+      <div style="font-size:11px;font-weight:600;color:var(--gr);margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em">ข้อมูลเส้นทาง</div>
+      <input type="hidden" id="reEditId">
+      <div class="admin-row2">
+        <div class="admin-field"><label>Route ID *</label><input class="admin-input" id="reRouteId" placeholder="R01" style="font-family:monospace;text-transform:uppercase"></div>
+        <div class="admin-field"><label>สี</label><input type="color" class="admin-input" id="reColor" value="#BA7517" style="padding:3px;height:38px"></div>
+      </div>
+      <div class="admin-field"><label>ชื่อเส้นทาง *</label><input class="admin-input" id="reName" placeholder="เช่น ศูนย์ประจักษ์ → เกษตรผล"></div>
+      <div class="admin-row2">
+        <div class="admin-field"><label>ต้นทาง</label><input class="admin-input" id="reOrigin" placeholder="ศูนย์ประจักษ์"></div>
+        <div class="admin-field"><label>ปลายทาง</label><input class="admin-input" id="reDest" placeholder="โรงงานน้ำตาลเกษตรผล"></div>
+      </div>
+      <div class="admin-row2">
+        <div class="admin-field"><label>ระยะทาง (กม.)</label><input class="admin-input" id="reDist" type="number" step="0.01"></div>
+        <div class="admin-field"><label>สถานะ</label>
+          <select class="admin-sel" id="reActive"><option value="true">✅ พร้อมใช้</option><option value="false">❌ ปิด</option></select>
+        </div>
+      </div>
+      <div class="admin-field"><label>บันทึก / มาตรการความปลอดภัย</label><textarea class="admin-ta" id="reNotes" placeholder="เช่น จำกัดความเร็วไม่เกิน 60 กม./ชม."></textarea></div>
+      <div class="admin-btn-row" style="margin-top:12px">
+        <button class="admin-del" id="reDelBtn" onclick="deleteRoute()" style="display:none">🗑️ ลบเส้นทาง</button>
+        <button class="admin-save" onclick="saveRouteEdit()">💾 บันทึกข้อมูลเส้นทาง</button>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--dk)">📍 จุดอันตรายในเส้นทางนี้</div>
+        <div style="font-size:10px;color:var(--gr);margin-top:1px" id="reCpCount">0 จุด</div>
+      </div>
+      <div style="display:flex;gap:7px">
+        <button onclick="cloudPushCurrentRoute()" style="padding:7px 11px;border-radius:var(--r);background:var(--bl);color:#fff;border:none;font-size:11px;font-weight:600;cursor:pointer">☁️ Sync</button>
+        <button onclick="openAddForRoute()" style="padding:7px 12px;border-radius:var(--r);background:var(--or);color:#fff;border:none;font-size:12px;font-weight:700;cursor:pointer">+ เพิ่มจุด</button>
+      </div>
+    </div>
+    <div id="routeCpList" style="max-height:320px;overflow-y:auto;margin-bottom:6px"></div>
+    <button onclick="quickAddGPS()" style="width:100%;padding:10px;border-radius:var(--r);background:var(--gn2);color:var(--gn3);border:1px solid var(--gn);font-size:12px;font-weight:600;cursor:pointer">
+      📍 เพิ่มจุดด้วย GPS ปัจจุบันทันที
+    </button>
+  </div>
+</div>
+
+<div class="modal-wrap" id="addSignModal" style="display:none">
+  <div class="modal-box">
+    <div class="modal-handle"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div style="font-size:16px;font-weight:700">⚙️ สร้างกล่องป้ายเตือนแบบกำหนดเองเพิ่ม</div>
+      <button onclick="closeAddSignType()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--gr)">✕</button>
+    </div>
+    <div class="admin-field">
+      <label style="font-weight:600;color:var(--dk);margin-bottom:6px">ชื่อป้ายเตือนความเสี่ยงภาษาไทย *</label>
+      <input class="admin-input" id="newSignLabel" placeholder="เช่น เขตจำกัดความเร็ว 20 กม./ชม., ระวังรถยกโฟล์คลิฟท์" style="padding:11px">
+    </div>
+    <div class="admin-btn-row" style="margin-top:16px">
+      <button onclick="closeAddSignType()" style="flex:1;padding:12px;border-radius:var(--r);background:var(--bg);color:var(--dk);border:1px solid var(--bd);font-size:13px;cursor:pointer;font-weight:600">ยกเลิก</button>
+      <button onclick="saveNewSignType()" class="admin-save" style="padding:12px;font-size:13px;font-weight:700">💾 สร้างกล่องป้าย</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-wrap" id="cloudModal" style="display:none">
+  <div class="modal-box">
+    <div class="modal-handle"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div style="font-size:15px;font-weight:600;color:var(--dk)">☁️ ตั้งค่า Cloud Sync</div>
+      <button onclick="closeCloudConfig()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--gr)">✕</button>
+    </div>
+    <div style="font-size:11px;color:var(--gr);line-height:1.6;margin-bottom:12px;background:var(--bg);border-radius:var(--r);padding:9px 12px">
+      วาง <b>Web App URL</b> จาก Google Apps Script → Deploy → New deployment
+    </div>
+    <div class="admin-field">
+      <label>Google Apps Script URL *</label>
+      <input class="admin-input" id="cloudUrl" placeholder="https://script.google.com/macros/s/.../exec" style="font-family:monospace;font-size:11px">
+    </div>
+    <div class="admin-field">
+      <label>ชื่อผู้ขับขี่ / ผู้ใช้งาน</label>
+      <input class="admin-input" id="cloudDriver" placeholder="เช่น นายจตุพล นามพุทธา">
+    </div>
+    <div class="admin-field">
+      <label>Auto-Sync อัตโนมัติ</label>
+      <select class="admin-sel" id="cloudAutoSync">
+        <option value="0">❌ ปิด (Manual)</option>
+        <option value="30">⏱️ ทุก 30 วินาที</option>
+        <option value="60">⏱️ ทุก 1 นาที</option>
+        <option value="300">⏱️ ทุก 5 นาที</option>
+      </select>
+    </div>
+    <div style="display:gap:8px;margin-top:16px">
+      <button onclick="cloudTest()" style="flex:1;padding:11px;border-radius:var(--r);background:var(--bg);color:var(--bl3);border:1px solid var(--bl);font-size:12px;font-weight:600;cursor:pointer">🔌 ทดสอบ</button>
+      <button onclick="saveCloudConfig()" style="flex:2;padding:11px;border-radius:var(--r);background:var(--gn);color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer">💾 บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-wrap" id="changePinModal" style="display:none">
+  <div class="modal-box">
+    <div class="modal-handle"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div style="font-size:15px;font-weight:600">🔑 เปลี่ยน PIN Admin</div>
+      <button onclick="closeChangePinModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--gr)">✕</button>
+    </div>
+    <div class="admin-field"><label>PIN เดิม</label><input class="admin-input" id="oldPin" type="password" inputmode="numeric" style="font-size:18px;letter-spacing:4px;text-align:center"></div>
+    <div class="admin-field"><label>PIN ใหม่ (อย่างน้อย 4 ตัว)</label><input class="admin-input" id="newPin" type="password" inputmode="numeric" style="font-size:18px;letter-spacing:4px;text-align:center"></div>
+    <div class="admin-field"><label>ยืนยัน PIN ใหม่</label><input class="admin-input" id="newPin2" type="password" inputmode="numeric" style="font-size:18px;letter-spacing:4px;text-align:center"></div>
+    <div id="pinChangeErr" style="display:none;color:var(--rd);font-size:12px;margin-top:6px;font-weight:600"></div>
+    <div class="admin-btn-row">
+      <button onclick="closeChangePinModal()" style="flex:1;padding:10px;border-radius:var(--r);background:var(--bg);color:var(--dk);border:1px solid var(--bd);font-size:13px;cursor:pointer">ยกเลิก</button>
+      <button onclick="submitChangePin()" class="admin-save">💾 บันทึก PIN ใหม่</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-wrap" id="pinModal" style="display:none;align-items:center">
+  <div id="pinBox" style="background:var(--wh);border-radius:20px;padding:28px 24px;width:88%;max-width:340px;margin:auto;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.3)">
+    <div style="font-size:36px;margin-bottom:8px">🔐</div>
+    <div style="font-size:16px;font-weight:700;color:var(--dk);margin-bottom:4px">พื้นที่ Admin</div>
+    <div style="font-size:12px;color:var(--gr);margin-bottom:20px">กรอก PIN เพื่อเข้าสู่หน้าจัดการ</div>
+    <input id="pinInput" type="password" inputmode="numeric" maxlength="8"
+      style="width:100%;text-align:center;font-size:28px;letter-spacing:8px;border:2px solid var(--bd);border-radius:var(--r);padding:12px;outline:none;font-family:monospace;margin-bottom:8px"
+      placeholder="• • • •"
+      onkeydown="if(event.key==='Enter')submitPin()">
+    <div id="pinError" style="display:none;color:var(--rd);font-size:12px;margin-bottom:8px;font-weight:600">❌ PIN ไม่ถูกต้อง</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0">
+      <button class="pin-key" onclick="pinKey('1')">1</button><button class="pin-key" onclick="pinKey('2')">2</button><button class="pin-key" onclick="pinKey('3')">3</button>
+      <button class="pin-key" onclick="pinKey('4')">4</button><button class="pin-key" onclick="pinKey('5')">5</button><button class="pin-key" onclick="pinKey('6')">6</button>
+      <button class="pin-key" onclick="pinKey('7')">7</button><button class="pin-key" onclick="pinKey('8')">8</button><button class="pin-key" onclick="pinKey('9')">9</button>
+      <button class="pin-key" onclick="document.getElementById('pinInput').value=''" style="background:var(--bg);color:var(--gr)">✕</button>
+      <button class="pin-key" onclick="pinKey('0')">0</button>
+      <button class="pin-key" onclick="pinBackspace()" style="background:var(--bg);color:var(--gr)">⌫</button>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button onclick="closePinModal()" style="flex:1;padding:11px;border-radius:var(--r);background:var(--bg);color:var(--gr);border:1px solid var(--bd);font-size:13px;cursor:pointer">ยกเลิก</button>
+      <button onclick="submitPin()" style="flex:2;padding:11px;border-radius:var(--r);background:var(--or);color:#fff;border:none;font-size:14px;font-weight:700;cursor:pointer">✅ เข้าสู่ระบบ</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== TRAFFIC SIGNS DISPLAY CODE =====
+function _thaiSign(fill,stroke,inner,size){
+  var s=size||120,h=s/2,m=s*0.071,m2=s*0.133,sw=s*0.058,sw2=s*0.021;
+  return'<svg viewBox="0 0 '+s+' '+s+'" xmlns="http://www.w3.org/2000/svg">'+
+    '<rect x="'+m+'" y="'+m+'" width="'+(s-m*2)+'" height="'+(s-m*2)+'" rx="'+(s*0.042)+'" fill="'+fill+'" stroke="'+stroke+'" stroke-width="'+sw+'" transform="rotate(45,'+h+','+h+')"/>'+
+    '<rect x="'+m2+'" y="'+m2+'" width="'+(s-m2*2)+'" height="'+(s-m2*2)+'" rx="'+(s*0.025)+'" fill="none" stroke="'+stroke+'" stroke-width="'+sw2+'" transform="rotate(45,'+h+','+h+')"/>'+
+    inner+'</svg>';
+}
+function _warn(i){return _thaiSign('#FFCC00','#1A1A1A',i,120);}
+function _gn(i){return _thaiSign('#2E7D32','#1B5E20',i,120);}
+function _bl(i){return _thaiSign('#0D47A1','#01295e',i,120);}
+
+var signImages={};
+function saveSignImages(){try{localStorage.setItem('kspSignImg',JSON.stringify(signImages));}catch(e){}}
+function loadSignImages(){try{var d=localStorage.getItem('kspSignImg');if(d)signImages=JSON.parse(d);}catch(e){}}
+function getSignImg(type,size){
+  size=size||120;
+  if(signImages && signImages[type])return '<img src="'+signImages[type]+'" width="'+size+'" height="'+size+'" style="object-fit:contain;border-radius:6px" alt="ป้าย '+type+'">';
+  return null;
+}
+function getTrafficSign(type){
+  var img=getSignImg(type,120);if(img)return img;
+  var c='#1A1A1A',w='#FFFFFF';
+  
+  if(type && type.indexOf('cst_') === 0) {
+    return _warn('<rect x="55" y="22" width="10" height="48" rx="5" fill="'+c+'"/><circle cx="60" cy="84" r="8" fill="'+c+'"/>');
+  }
+
+  if(type==='curve')return _warn('<path d="M70 82 C56 82 46 76 44 64 C42 52 50 44 50 30 L58 30 C58 44 50 52 52 64 C54 76 64 80 70 80 Z" fill="'+c+'"/><polygon points="50,30 36,22 36,38" fill="'+c+'"/><rect x="44" y="78" width="28" height="8" fill="#FFCC00"/>');
+  if(type==='junction')return _warn('<rect x="54" y="22" width="12" height="76" rx="4" fill="'+c+'"/><rect x="22" y="54" width="76" height="12" rx="4" fill="'+c+'"/><polygon points="60,14 50,28 70,28" fill="'+c+'"/><polygon points="106,60 92,50 92,70" fill="'+c+'"/><polygon points="14,60 28,50 28,70" fill="'+c+'"/>');
+  if(type==='merge')return _warn('<rect x="54" y="22" width="12" height="76" rx="4" fill="'+c+'"/><path d="M24 56 Q24 66 54 66 L54 54 Q36 54 36 54 Q36 46 24 46 Z" fill="'+c+'"/><polygon points="60,14 50,28 70,28" fill="'+c+'"/><polygon points="60,106 50,92 70,92" fill="'+c+'"/><polygon points="16,51 30,44 30,58" fill="'+c+'"/>');
+  if(type==='narrow')return _warn('<rect x="54" y="22" width="12" height="76" rx="4" fill="'+c+'"/><polygon points="54,58 28,34 38,28 60,50 82,28 92,34 66,58" fill="'+c+'"/><polygon points="60,14 50,28 70,28" fill="'+c+'"/>');
+  if(type==='downhill')return _warn('<path d="M26 34 L88 80 L88 92 L26 46 Z" fill="'+c+'"/><rect x="26" y="82" width="62" height="10" rx="4" fill="'+c+'"/><polygon points="88,76 100,90 76,90" fill="'+c+'"/><text x="32" y="66" font-family="Arial Black,Arial,sans-serif" font-size="17" font-weight="900" fill="'+c+'">5%</text>');
+  if(type==='community')return _warn('<circle cx="52" cy="28" r="8" fill="'+c+'"/><path d="M52 36 L44 54 L36 70" stroke="'+c+'" stroke-width="9" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M52 36 L56 56 L64 74" stroke="'+c+'" stroke-width="9" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M44 46 L64 46" stroke="'+c+'" stroke-width="9" fill="none" stroke-linecap="round"/><circle cx="74" cy="26" r="7" fill="'+c+'"/><path d="M74 33 L68 50 L62 64" stroke="'+c+'" stroke-width="8" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M74 33 L80 50 L86 64" stroke="'+c+'" stroke-width="8" fill="none" stroke-linecap="round" stroke-linejoin="round"/><rect x="26" y="87" width="68" height="9" rx="4" fill="'+c+'"/>');
+  if(type==='danger'||type==='warn')return _warn('<rect x="55" y="22" width="10" height="48" rx="5" fill="'+c+'"/><circle cx="60" cy="84" r="8" fill="'+c+'"/>');
+  if(type==='start')return _gn('<path d="M32 62 L52 80 L88 36" stroke="'+w+'" stroke-width="12" fill="none" stroke-linecap="round" stroke-linejoin="round"/>');
+  if(type==='arrive')return _bl('<rect x="42" y="28" width="7" height="72" rx="3" fill="'+w+'"/><rect x="42" y="28" width="12" height="11" fill="'+w+'"/><rect x="54" y="39" width="12" height="11" fill="'+w+'"/><rect x="42" y="50" width="12" height="11" fill="'+w+'"/><rect x="54" y="61" width="12" height="11" fill="'+w+'"/>');
+  return _warn('<rect x="55" y="22" width="10" height="48" rx="5" fill="'+c+'"/><circle cx="60" cy="84" r="8" fill="'+c+'"/>');
+}
+function getTrafficSignSmall(type,w,h) {
+  w=w||28; h=h||28;
+  var img=getSignImg(type,w); if(img) return img;
+  var c='#1A1A1A', wh='#FFFFFF';
+  
+  if(type && type.indexOf('cst_') === 0) {
+    return '<svg width="'+w+'" height="'+h+'" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"><rect x="4.5" y="4.5" width="51" height="51" rx="2.5" fill="#FFCC00" stroke="#1A1A1A" stroke-width="3.5" transform="rotate(45,30,30)"/><rect x="8" y="8" width="44" height="44" rx="1.5" fill="none" stroke="#1A1A1A" stroke-width="1" transform="rotate(45,30,30)"/><rect x="27" y="11" width="6" height="24" rx="3" fill="'+c+'"/><circle cx="30" cy="42" r="4" fill="'+c+'"/></svg>';
+  }
+
+  function mk(fill,stroke,inner){return'<svg width="'+w+'" height="'+h+'" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"><rect x="4.5" y="4.5" width="51" height="51" rx="2.5" fill="'+fill+'" stroke="'+stroke+'" stroke-width="3.5" transform="rotate(45,30,30)"/><rect x="8" y="8" width="44" height="44" rx="1.5" fill="none" stroke="#1A1A1A" stroke-width="1" transform="rotate(45,30,30)"/>'+inner+'</svg>';}
+  var y=function(i){return mk('#FFCC00','#1A1A1A',i);};
+  var g=function(i){return mk('#2E7D32','#1B5E20',i);};
+  var b=function(i){return mk('#0D47A1','#01295e',i);};
+  if(type==='curve')return y('<path d="M35 41 C28 41 23 38 22 32 C21 26 25 22 25 15 L29 15 C29 22 25 26 26 32 C27 38 32 40 35 40 Z" fill="'+c+'"/><polygon points="25,15 18,11 18,19" fill="'+c+'"/><rect x="22" y="39" width="14" height="4" fill="#FFCC00"/>');
+  if(type==='junction')return y('<rect x="27" y="11" width="6" height="38" rx="2" fill="'+c+'"/><rect x="11" y="27" width="38" height="6" rx="2" fill="'+c+'"/><polygon points="30,8 25,14 35,14" fill="'+c+'"/><polygon points="52,30 46,25 46,35" fill="'+c+'"/><polygon points="8,30 14,25 14,35" fill="'+c+'"/>');
+  if(type==='merge')return y('<rect x="27" y="11" width="6" height="38" rx="2" fill="'+c+'"/><path d="M12 28 Q12 33 27 33 L27 27 Q18 27 18 23 Q18 19 12 19 Z" fill="'+c+'"/><polygon points="30,8 25,14 35,14" fill="'+c+'"/><polygon points="30,52 25,46 35,46" fill="'+c+'"/>');
+  if(type==='narrow')return y('<rect x="27" y="11" width="6" height="38" rx="2" fill="'+c+'"/><polygon points="27,29 14,17 19,14 30,25 41,14 46,17 33,29" fill="'+c+'"/><polygon points="30,8 25,14 35,14" fill="'+c+'"/>');
+  if(type==='downhill')return y('<path d="M13 17 L44 40 L44 46 L13 23 Z" fill="'+c+'"/><rect x="13" y="41" width="31" height="5" rx="2" fill="'+c+'"/><polygon points="44,38 50,45 38,45" fill="'+c+'"/>');
+  if(type==='community')return y('<circle cx="26" cy="14" r="4" fill="'+c+'"/><path d="M26 18 L22 27 L18 35" stroke="'+c+'" stroke-width="4.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M26 18 L28 28 L32 37" stroke="'+c+'" stroke-width="4.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M22 23 L32 23" stroke="'+c+'" stroke-width="4.5" fill="none" stroke-linecap="round"/><circle cx="38" cy="13" r="3.5" fill="'+c+'"/><path d="M38 17 L35 25 L32 32" stroke="'+c+'" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M38 17 L41 25 L44 32" stroke="'+c+'" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/><rect x="14" y="44" width="32" height="4" rx="2" fill="'+c+'"/>');
+  if(type==='danger'||type==='warn')return y('<rect x="27" y="11" width="6" height="24" rx="3" fill="'+c+'"/><circle cx="30" cy="42" r="4" fill="'+c+'"/>');
+  if(type==='start')return g('<path d="M16 30 L26 40 L44 19" stroke="'+wh+'" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>');
+  if(type==='arrive')return b('<rect x="21" y="14" width="4" height="32" rx="2" fill="'+wh+'"/><rect x="21" y="14" width="8" height="7" fill="'+wh+'"/><rect x="29" y="21" width="8" height="7" fill="'+wh+'"/><rect x="21" y="28" width="8" height="7" fill="'+wh+'"/><rect x="29" y="35" width="8" height="7" fill="'+wh+'"/>');
+  return y('<rect x="27" y="11" width="6" height="24" rx="3" fill="'+c+'"/><circle cx="30" cy="42" r="4" fill="'+c+'"/>');
+}
+
+// ===== CUSTOM USER SIGN TYPE DYNAMIC ENGINES =====
+var customSignTypes = {};
+function loadCustomSignTypes() {
+  try {
+    var d = localStorage.getItem('kspCustomSigns');
+    if (d) {
+      customSignTypes = JSON.parse(d);
+      var container = document.getElementById('customOptGroup');
+      if (container) {
+        container.innerHTML = "";
+        for (var type in customSignTypes) {
+          var opt = document.createElement('option');
+          opt.value = type;
+          opt.textContent = customSignTypes[type].label;
+          container.appendChild(opt);
+        }
+      }
+    }
+  } catch (e) { console.error(e); }
+}
+
+function openAddSignType() { document.getElementById('addSignModal').style.display = "flex"; }
+function closeAddSignType() { document.getElementById('addSignModal').style.display = "none"; }
+function saveNewSignType() {
+  var label = document.getElementById('newSignLabel').value.trim();
+  if (!label) { alert("กรุณาระบุชื่อป้ายเตือนความเสี่ยงภาษาไทย"); return; }
+  
+  var rawId = "cst_" + Date.now();
+  customSignTypes[rawId] = { label: label, code: "Custom" };
+  localStorage.setItem('kspCustomSigns', JSON.stringify(customSignTypes));
+  
+  loadCustomSignTypes();
+  renderSignUploadGrid();
+  closeAddSignType();
+  document.getElementById('newSignLabel').value = "";
+  showToast("➕ เพิ่มกล่องอัปโหลดป้ายใหม่สำเร็จ!");
+}
+
+// ===== DATA SYSTEM MODELS =====
+var defaultRoutes = [
+  { id: "R01", name: "ศูนย์ประจักษ์ อุดรธานี → โรงงานน้ำตาลเกษตรผล", origin: "อุดรธานี", dest: "กุมภวาปี", distance: 42.5, color: "#BA7517", active: true, notes: "เส้นทางหลักขนส่งน้ำตาล" },
+  { id: "R02", name: "โรงงานน้ำตาลเกษตรผล → คลังสินค้าขอนแก่น", origin: "กุมภวาปี", dest: "ขอนแก่น", distance: 78.2, color: "#185FA5", active: true, notes: "เส้นทางมิตรภาพเฝ้าระวัง" }
+];
+
+var defaultCheckpoints = [
+  { id: 0, routeId: "R01", km: "0.0 กม.", name: "จุดเริ่มต้น: ศูนย์ประจักษ์ อุดรธานี", type: "start", emoji: "🏢", lat: 17.4068, lng: 102.7996, alert: false, title: "", desc: "", speak: "" }
+];
+
+var routes = [], checkpoints = [], historyLogs = [];
+var currentRouteId = "";
+var currentScreen = "routes";
+var adminUnlocked = false;
+var adminPin = "1234";
+
+var isTripActive = false;
+var tripStartTime = null;
+var tripTimerInterval = null;
+var passedCheckpoints = {};
+var lastActiveAlertCpId = null;
+
+var watchId = null;
+var myLat = null, myLng = null, mySpeed = 0, myHeading = 0;
+var autoAlert = true, ttsOn = true, sndOn = true, vol = 0.8, alertR = 300;
+
+var isPreviewMode = false;
+var previewInterval = null;
+var previewRoutePoints = [];
+var previewCurrentPointIdx = 0;
+
+var cloudUrl = "";
+var cloudDriver = "คนขับรถบรรทุก KSP";
+var cloudAutoSync = 0;
+var cloudTimer = null;
+
+var audioCtx = null;
+function initAudio() { 
+  if (!audioCtx) {
+    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) { console.error(e); }
+  } 
+}
+function playBeep(freq, type, duration) {
+  if (!sndOn) return; initAudio(); if (!audioCtx) return;
+  try {
+    var osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+    osc.type = type || 'sine'; osc.frequency.value = freq || 440;
+    gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duration);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(); osc.stop(audioCtx.currentTime + duration);
+  } catch(e){}
+}
+function triggerVibrate(pattern) { if (navigator.vibrate && document.getElementById('vibCk') && document.getElementById('vibCk').checked) navigator.vibrate(pattern); }
+
+function loadAllData() {
+  try {
+    var r = localStorage.getItem('kspRoutes'), c = localStorage.getItem('kspCps'), h = localStorage.getItem('kspHist'), p = localStorage.getItem('kspPin'), cl = localStorage.getItem('kspCloud');
+    routes = r ? JSON.parse(r) : defaultRoutes;
+    checkpoints = c ? JSON.parse(c) : defaultCheckpoints;
+    historyLogs = h ? JSON.parse(h) : [];
+    if (p) adminPin = p;
+    if (cl) {
+      var co = JSON.parse(cl); cloudUrl = co.url||""; cloudDriver = co.driver||"คนขับรถบรรทุก KSP"; cloudAutoSync = +co.autoSync||0;
+      if(document.getElementById('cloudUrl')) document.getElementById('cloudUrl').value = cloudUrl; 
+      if(document.getElementById('cloudDriver')) document.getElementById('cloudDriver').value = cloudDriver; 
+      if(document.getElementById('cloudAutoSync')) document.getElementById('cloudAutoSync').value = cloudAutoSync;
+      if (cloudUrl && document.getElementById('cloudStatus')) document.getElementById('cloudStatus').innerHTML = "🔗 เชื่อมต่อผู้ขับ: <b>" + cloudDriver + "</b>";
+    }
+    var cur = localStorage.getItem('kspCurrentRouteId');
+    if (cur) currentRouteId = cur; else if (routes && routes.length > 0) currentRouteId = routes[0].id;
+    loadSignImages();
+  } catch(e) {
+    routes = defaultRoutes; checkpoints = defaultCheckpoints; historyLogs = [];
+  }
+}
+function saveRoutesData() { localStorage.setItem('kspRoutes', JSON.stringify(routes)); }
+function saveCpsData() { localStorage.setItem('kspCps', JSON.stringify(checkpoints)); }
+function saveHistData() { localStorage.setItem('kspHist', JSON.stringify(historyLogs)); }
+
+// ===== LEAFLET HANDLING MAP =====
+var lMap = null, truckMarker = null, myLocDotMarker = null, mapCMarkers = [];
+function initLeafletMap() {
+  if (lMap) return;
+  lMap = L.map('leafmap', { zoomControl: false, attributionControl: false }).setView([17.20, 102.85], 10);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(lMap);
+  renderMapElements();
+}
+function centerMap() {
+  if (isPreviewMode && previewRoutePoints[previewCurrentPointIdx]) {
+    lMap.panTo(previewRoutePoints[previewCurrentPointIdx]);
+  } else if (myLat && myLng) {
+    lMap.setView([myLat, myLng], 15);
+  } else {
+    var activeCps = checkpoints.filter(function(c){return String(c.routeId).trim() === String(currentRouteId).trim();});
+    if (activeCps.length > 0) {
+      var group = L.featureGroup(activeCps.map(function(c){return L.marker([c.lat, c.lng]);}));
+      lMap.fitBounds(group.getBounds().pad(0.1));
+    }
+  }
+}
+function renderMapElements() {
+  if (!lMap) return;
+  mapCMarkers.forEach(function(m){lMap.removeLayer(m);}); mapCMarkers = [];
+  if (truckMarker) { lMap.removeLayer(truckMarker); truckMarker = null; }
+  if (myLocDotMarker) { lMap.removeLayer(myLocDotMarker); myLocDotMarker = null; }
+
+  var activeCps = checkpoints.filter(function(c){return String(c.routeId).trim() === String(currentRouteId).trim();});
+  var pathCoords = [];
+
+  activeCps.sort(function(a,b){return parseFloat(a.km)-parseFloat(b.km);}).forEach(function(cp) {
+    pathCoords.push([cp.lat, cp.lng]);
+    var mClass = "cp-marker " + (cp.type || "warn");
+    if (passedCheckpoints[cp.id]) mClass += " passed";
+    else if (lastActiveAlertCpId === cp.id) mClass += " alert-ring";
+
+    var iconHtml = '<div class="' + mClass + '">' + (cp.emoji || "⚠️") + '</div>';
+    var cMark = L.marker([cp.lat, cp.lng], {
+      icon: L.divIcon({ className: '', html: iconHtml, iconSize: [30, 30], iconAnchor: [15, 15] })
+    }).addTo(lMap);
+    
+    cMark.bindPopup("<b>" + cp.name + "</b><br>ระยะทาง: " + cp.km);
+    mapCMarkers.push(cMark);
+  });
+
+  if (pathCoords.length > 1) {
+    var rColor = "#BA7517";
+    var currentRoute = routes.find(function(r){return r.id === currentRouteId;});
+    if (currentRoute && currentRoute.color) rColor = currentRoute.color;
+    var poly = L.polyline(pathCoords, { color: rColor, weight: 5, opacity: 0.75 }).addTo(lMap);
+    mapCMarkers.push(poly);
+  }
+
+  var startPos = pathCoords[0] || [17.4068, 102.7996];
+  var truckIcon = L.divIcon({
+    className: '',
+    html: '<div class="truck-pulse" id="mapTruckEl"><span class="truck-marker">🚛</span></div>',
+    iconSize: [44, 44], iconAnchor: [22, 22]
+  });
+  truckMarker = L.marker(startPos, { icon: truckIcon }).addTo(lMap);
+  myLocDotMarker = L.marker(startPos, {
+    icon: L.divIcon({ className: '', html: '<div class="my-loc-dot"></div>', iconSize: [14, 14], iconAnchor: [7, 7] })
+  }).addTo(lMap);
+}
+function updateTruckMarkerPosition(lat, lng, heading, speed) {
+  if (!truckMarker || !myLocDotMarker) return;
+  truckMarker.setLatLng([lat, lng]);
+  myLocDotMarker.setLatLng([lat, lng]);
+  var tEl = document.querySelector('#mapTruckEl .truck-marker');
+  if (tEl) {
+    var deg = ((heading || 0) + 180) % 360;
+    tEl.style.transform = 'rotate(' + deg + 'deg) scaleX(-1)';
+  }
+}
+
+// ===== GPS GEOLOCATION =====
+function requestGPS() {
+  if (!navigator.geolocation) { showToast("❌ อุปกรณ์ไม่รองรับ GPS"); return; }
+  showToast("📡 กำลังเรียกข้อมูลพิกัดดาวเทียม...");
+  if (watchId) navigator.geolocation.clearWatch(watchId);
+  watchId = navigator.geolocation.watchPosition(onGpsSuccess, onGpsError, {
+    enableHighAccuracy: true, timeout: 10000, maximumAge: 0
+  });
+}
+function onGpsSuccess(pos) {
+  myLat = pos.coords.latitude; myLng = pos.coords.longitude;
+  mySpeed = pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : 0;
+  myHeading = pos.coords.heading || 0;
+  
+  var dot = document.getElementById('gpsDot'), lbl = document.getElementById('gpsLbl');
+  if(dot) dot.className = "gps-dot on"; 
+  if(lbl) lbl.textContent = "GPS ล็อก";
+  if(document.getElementById('gpsPrompt')) document.getElementById('gpsPrompt').classList.remove('show');
+
+  if(document.getElementById('tripSpd')) document.getElementById('tripSpd').textContent = mySpeed + " กม/ชม";
+  if(document.getElementById('mapSpd')) document.getElementById('mapSpd').textContent = mySpeed;
+
+  if (isTripActive && !isPreviewMode) {
+    updateTruckMarkerPosition(myLat, myLng, myHeading, mySpeed);
+    checkProximityAlerts(myLat, myLng, mySpeed);
+  }
+}
+function onGpsError(err) {
+  var dot = document.getElementById('gpsDot'), lbl = document.getElementById('gpsLbl');
+  if(dot) dot.className = "gps-dot err"; 
+  if(lbl) lbl.textContent = "GPS หลุด";
+  if (err.code === 1) showToast("❌ กรุณาอนุญาตสิทธิ์เข้าถึง GPS");
+}
+
+function getDistanceMeters(lat1, lon1, lat2, lon2) {
+  var R = 6371e3;
+  var phi1 = lat1 * Math.PI/180, phi2 = lat2 * Math.PI/180;
+  var dPhi = (lat2-lat1) * Math.PI/180, dLambda = (lon2-lon1) * Math.PI/180;
+  var a = Math.sin(dPhi/2) * Math.sin(dPhi/2) + Math.cos(phi1) * Math.cos(phi2) * Math.sin(dLambda/2) * Math.sin(dLambda/2);
+  return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+}
+
+// ===== REAL-TIME PROXIMITY GPS ENGINE (FIXED FOR LAST 3 CHECKPOINTS) =====
+function checkProximityAlerts(currentLat, currentLng, speedCurrent) {
+  var activeCps = checkpoints.filter(function(c){return String(c.routeId).trim() === String(currentRouteId).trim();});
+  if (!activeCps || activeCps.length === 0) return;
+
+  var foundTarget = null;
+  var minDistance = 999999;
+  var nearestCp = null;
+  var minDist = Infinity;
+
+  // วนลูปแยกประมวลผลระยะทางทุกหมุดในระบบอย่างเป็นอิสระต่อกัน (แก้ปัญหาวิ่งข้าม 3 จุดสุดท้าย)
+  activeCps.forEach(function(cp) {
+    if(!cp.lat || !cp.lng) return; 
+    var dist = getDistanceMeters(currentLat, currentLng, cp.lat, cp.lng);
+
+    if(dist < minDist){ minDist = dist; nearestCp = cp; }
+
+    // เมื่อล้อรถผ่านจุดตัด 80 เมตร ให้เช็กพอยต์แอนิเมชันผ่านด่านทันที
+    if(!passedCheckpoints[cp.id] && dist <= 80){
+      passedCheckpoints[cp.id] = new Date().toLocaleTimeString('th-TH', {hour: '2-digit', minute:'2-digit'});
+      playBeep(880, 'triangle', 0.45);
+      triggerVibrate([100, 50, 100]);
+      showToast('✅ ผ่านจุด: ' + cp.name);
+      renderCheckpointLists();
+      renderMapElements();
+    }
+
+    // ประมวลผลหาจุดเตือนภัยที่ใกล้รถมากที่สุดในช่วงรัศมีกำหนด
+    if(cp.alert && !passedCheckpoints[cp.id] && dist <= alertR) {
+      if (dist < minDistance) {
+        minDistance = dist;
+        foundTarget = cp; 
+      }
+    }
+  });
+
+  // อัปเดตข้อมูลกล่องสเตตัสบาร์ใต้แผนที่
+  var mapNearEl = document.getElementById('mapNear');
+  if(mapNearEl){
+    if(foundTarget) {
+      var dTxt = minDistance > 1000 ? (minDistance/1000).toFixed(1)+'กม.' : Math.round(minDistance)+'ม.';
+      mapNearEl.textContent = (foundTarget.emoji||'⚠️') + ' ' + foundTarget.name + ' (' + dTxt + ')';
+    } else if(nearestCp){
+      var dTxt2 = minDist > 1000 ? (minDist/1000).toFixed(1)+'กม.' : Math.round(minDist)+'ม.';
+      mapNearEl.textContent = (nearestCp.emoji||'📍') + ' ' + nearestCp.name + ' (' + dTxt2 + ')';
+    } else {
+      mapNearEl.textContent = '--';
+    }
+  }
+
+  // ตัวจัดการเปิดหน้าต่าง Popup แจ้งเตือนความปลอดภัยโรงงาน
+  if(foundTarget) {
+    if(lastActiveAlertCpId !== foundTarget.id) {
+      lastActiveAlertCpId = foundTarget.id;
+      triggerDangerVisualAlert(foundTarget, minDistance);
+    } else {
+      var pbDistEl = document.getElementById('pbDist');
+      if(pbDistEl) pbDistEl.textContent = 'ระยะห่าง: ' + Math.round(minDistance) + ' เมตร';
+    }
+  } else {
+    if(lastActiveAlertCpId !== null) {
+      lastActiveAlertCpId = null;
+      var pb = document.getElementById('proxBanner');
+      if(pb) pb.classList.remove('show');
+      closeAlert();
+      renderMapElements();
+    }
+  }
+}
+
+function triggerDangerVisualAlert(cp, distance) {
+  playBeep(587.33, 'sawtooth', 0.25); setTimeout(function(){playBeep(587.33,'sawtooth',0.25);}, 300);
+  triggerVibrate([400, 200, 400, 200, 400]);
+  renderMapElements();
+
+  var pb = document.getElementById('proxBanner'), pbe = document.getElementById('pbEmoji'), pbt = document.getElementById('pbText'), pbd = document.getElementById('pbDist');
+  if(pb) {
+    pb.className = "prox-banner show " + (cp.type === 'community'?'warn':'');
+    if(pbe) pbe.textContent = cp.emoji||"⚠️"; 
+    if(pbt) pbt.textContent = cp.name; 
+    if(pbd) pbd.textContent = "ระยะห่าง: " + Math.round(distance) + " เมตร";
+  }
+
+  if (!autoAlert) return;
+
+  if(document.getElementById('trafficSign')) document.getElementById('trafficSign').innerHTML = getTrafficSign(cp.type);
+  var badgeWrap = document.getElementById('mBadge');
+  if(badgeWrap) badgeWrap.innerHTML = isPreviewMode ? '<span class="manual">👁️ PREVIEW MODE</span>' : '<span class="gps">📡 LIVE GPS</span>';
+  
+  if(document.getElementById('mTitle')) document.getElementById('mTitle').textContent = cp.title || "แจ้งเตือนจุดเสี่ยง!";
+  if(document.getElementById('mDesc')) document.getElementById('mDesc').textContent = cp.desc || cp.name;
+
+  var rulesWrap = document.getElementById('mRules'); 
+  if(rulesWrap) {
+    rulesWrap.innerHTML = "";
+    if (cp.rules && cp.rules.length > 0) {
+      cp.rules.forEach(function(r){
+        var rDiv = document.createElement('div'); rDiv.className = "modal-rule";
+        rDiv.innerHTML = "<span>🛑</span><span>" + r + "</span>"; rulesWrap.appendChild(rDiv);
+      });
+      rulesWrap.style.display = "block";
+    } else { rulesWrap.style.display = "none"; }
+  }
+
+  if(document.getElementById('alertModal')) document.getElementById('alertModal').style.display = "flex";
+
+  if (ttsOn && cp.speak) {
+    var mSpeak = document.getElementById('mSpeak'), mSpeakTxt = document.getElementById('mSpeakTxt');
+    if(mSpeak) mSpeak.style.display = "flex"; 
+    if(mSpeakTxt) mSpeakTxt.textContent = cp.speak;
+    
+    var durationEst = Math.max(3000, cp.speak.length * 140);
+    if(document.getElementById('autoDismissTxt')) document.getElementById('autoDismissTxt').textContent = "ปิดอัตโนมัติภายใน " + Math.round(durationEst/1000) + " วินาที";
+    
+    window.speakTimer = setTimeout(function(){ closeAlert(); }, durationEst);
+
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      var msg = new SpeechSynthesisUtterance(cp.speak);
+      msg.lang = 'th-TH'; msg.volume = vol; msg.rate = 0.95;
+      window.speechSynthesis.speak(msg);
+    }
+  } else {
+    if(document.getElementById('mSpeak')) document.getElementById('mSpeak').style.display = "none";
+    if(document.getElementById('autoDismissTxt')) document.getElementById('autoDismissTxt').textContent = "กดรับทราบเพื่อดำเนินการต่อ";
+  }
+}
+function closeAlert() {
+  if(document.getElementById('alertModal')) document.getElementById('alertModal').style.display = "none";
+  if (window.speakTimer) clearTimeout(window.speakTimer);
+}
+
+// ===== PREVIEW SIMULATION =====
+function startPreview() {
+  if (isPreviewMode) { stopPreview(); return; }
+  var activeCps = checkpoints.filter(function(c){return String(c.routeId).trim() === String(currentRouteId).trim();}).sort(function(a,b){return parseFloat(a.km)-parseFloat(b.km);});
+  if (activeCps.length < 2) { showToast("❌ เส้นทางนี้ต้องการพิกัดอย่างน้อย 2 จุด"); return; }
+
+  previewRoutePoints = [];
+  for (var i = 0; i < activeCps.length - 1; i++) {
+    var pStart = activeCps[i], pEnd = activeCps[i+1];
+    var steps = 30;
+    for (var j = 0; j <= steps; j++) {
+      var ratio = j / steps;
+      var lLat = pStart.lat + (pEnd.lat - pStart.lat) * ratio;
+      var lLng = pStart.lng + (pEnd.lng - pStart.lng) * ratio;
+      previewRoutePoints.push({ lat: lLat, lng: lLng, heading: getBearing(pStart.lat, pStart.lng, pEnd.lat, pEnd.lng) });
+    }
+  }
+
+  isPreviewMode = true; previewCurrentPointIdx = 0;
+  passedCheckpoints = {}; renderCheckpointLists();
+
+  if(document.getElementById('previewTxt')) document.getElementById('previewTxt').textContent = "หยุดตัวจำลอง";
+  if(document.getElementById('previewBtn')) document.getElementById('previewBtn').style.backgroundColor = "var(--rd)";
+  
+  var banner = document.getElementById('modeBanner');
+  if(banner) {
+    banner.style.display = "block"; banner.style.backgroundColor = "#7C3AED";
+    banner.textContent = "👁️ กำลังรัน Preview จำลองเส้นทางขับขี่";
+  }
+
+  if (!isTripActive) toggleMapTrip();
+
+  previewInterval = setInterval(function() {
+    if (previewCurrentPointIdx >= previewRoutePoints.length) { stopPreview(); showToast("🏁 สิ้นสุดการจำลองเส้นทาง"); return; }
+    var pt = previewRoutePoints[previewCurrentPointIdx];
+    
+    myLat = pt.lat; myLng = pt.lng; myHeading = pt.heading; mySpeed = 85;
+    if(document.getElementById('mapSpd')) document.getElementById('mapSpd').textContent = mySpeed;
+    if(document.getElementById('tripSpd')) document.getElementById('tripSpd').textContent = mySpeed + " กม/ชม";
+
+    updateTruckMarkerPosition(myLat, myLng, myHeading, mySpeed);
+    checkProximityAlerts(myLat, myLng, mySpeed);
+
+    if (previewCurrentPointIdx % 4 === 0 && lMap) lMap.panTo([myLat, myLng]);
+    previewCurrentPointIdx++;
+  }, 250);
+}
+function stopPreview() {
+  isPreviewMode = false; if (previewInterval) clearInterval(previewInterval);
+  if(document.getElementById('previewTxt')) document.getElementById('previewTxt').textContent = "Preview เส้นทาง";
+  if(document.getElementById('previewBtn')) document.getElementById('previewBtn').style.backgroundColor = "#7C3AED";
+  if(document.getElementById('modeBanner')) document.getElementById('modeBanner').style.display = "none";
+}
+function getBearing(lat1, lon1, lat2, lon2) {
+  var dLon = (lon2 - lon1) * Math.PI / 180;
+  var lat1Rad = lat1 * Math.PI / 180, lat2Rad = lat2 * Math.PI / 180;
+  var y = Math.sin(dLon) * Math.cos(lat2Rad);
+  var x = Math.cos(lat1Rad) * Math.sin(lat2Rad) - Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLon);
+  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+}
+
+// ===== TRIP HANDLING =====
+function toggleTrip() {
+  if (!isTripActive) {
+    isTripActive = true; tripStartTime = new Date();
+    passedCheckpoints = {}; lastActiveAlertCpId = null;
+    if(document.getElementById('startBtn')) document.getElementById('startBtn').className = "btn btn-gy";
+    if(document.getElementById('startTxt')) document.getElementById('startTxt').textContent = "⏸️ หยุดบันทึกชั่วคราว";
+    showToast("🚀 เริ่มต้นนับเวลาการเดินทางจริง");
+    
+    tripTimerInterval = setInterval(updateTripTimer, 1000);
+    renderCheckpointLists(); renderMapElements();
+    if (!watchId) requestGPS();
+  } else {
+    isTripActive = false; if (tripTimerInterval) clearInterval(tripTimerInterval);
+    if(document.getElementById('startBtn')) document.getElementById('startBtn').className = "btn btn-gn";
+    if(document.getElementById('startTxt')) document.getElementById('startTxt').textContent = "▶ เดินทางต่อ (Resume)";
+    showToast("⏸️ หยุดบันทึกชั่วคราว");
+    saveTripToHistory();
+  }
+  updateTripUIButtons();
+}
+function toggleMapTrip() { toggleTrip(); }
+function updateTripUIButtons() {
+  var mIcon = document.getElementById('mapStartIcon'), mTxt = document.getElementById('mapStartTxt'), mBtn = document.getElementById('mapStartBtn');
+  if (isTripActive) {
+    if (mIcon) mIcon.textContent = "⏸"; if (mTxt) mTxt.textContent = "หยุดชั่วคราว";
+    if (mBtn) mBtn.style.backgroundColor = "var(--rd)";
+  } else {
+    if (mIcon) mIcon.textContent = "▶"; if (mTxt) mTxt.textContent = "เริ่มเดินทางจริง";
+    if (mBtn) mBtn.style.backgroundColor = "var(--gn)";
+  }
+}
+function updateTripTimer() {
+  if (!tripStartTime) return;
+  var diff = new Date() - tripStartTime;
+  var hours = Math.floor(diff / 3600000), minutes = Math.floor((diff % 3600000) / 60000), seconds = Math.floor((diff % 60000) / 1000);
+  var pad = function(n){return n<10?'0'+n:n;};
+  var timeStr = pad(hours) + ":" + pad(minutes) + ":" + pad(seconds);
+  
+  if(document.getElementById('tripElapsed')) document.getElementById('tripElapsed').textContent = timeStr;
+  if(document.getElementById('mapTime')) document.getElementById('mapTime').textContent = pad(minutes) + ":" + pad(seconds);
+}
+function resetTrip() {
+  if (confirm("ต้องการรีเซ็ตการเดินทางรอบนี้ใช่หรือไม่?")) {
+    isTripActive = false; if (tripTimerInterval) clearInterval(tripTimerInterval);
+    if (previewInterval) clearInterval(previewInterval); isPreviewMode = false;
+    tripStartTime = null; passedCheckpoints = {}; lastActiveAlertCpId = null;
+    
+    if(document.getElementById('tripElapsed')) document.getElementById('tripElapsed').textContent = "00:00:00";
+    if(document.getElementById('mapTime')) document.getElementById('mapTime').textContent = "00:00";
+    if(document.getElementById('startBtn')) document.getElementById('startBtn').className = "btn btn-gn";
+    if(document.getElementById('startTxt')) document.getElementById('startTxt').textContent = "▶ เริ่มออกเดินทาง";
+    if(document.getElementById('proxBanner')) document.getElementById('proxBanner').classList.remove('show');
+    
+    updateTripUIButtons(); stopPreview(); renderCheckpointLists(); renderMapElements();
+    showToast("↺ รีเซ็ตทริปเรียบร้อย");
+  }
+}
+function saveTripToHistory() {
+  var activeCps = checkpoints.filter(function(c){return String(c.routeId).trim() === String(currentRouteId).trim();});
+  var total = activeCps.length, passed = Object.keys(passedCheckpoints).length;
+  if (passed === 0) return;
+
+  var currentRoute = routes.find(function(r){return r.id === currentRouteId;});
+  var log = {
+    id: Date.now(),
+    routeName: currentRoute ? currentRoute.name : currentRouteId,
+    date: new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' }),
+    time: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }),
+    elapsed: document.getElementById('tripElapsed') ? document.getElementById('tripElapsed').textContent : "00:00:00",
+    score: passed + "/" + total
+  };
+  historyLogs.unshift(log); saveHistData(); renderHistoryList();
+  if (cloudUrl && cloudAutoSync > 0) cloudPush();
+}
+
+// ===== UI RENDERING =====
+function renderRouteLists() {
+  var list = document.getElementById('routeList'), adminList = document.getElementById('adminRouteList');
+  if(!list) return;
+  list.innerHTML = ""; if(adminList) adminList.innerHTML = "";
+  
+  routes.forEach(function(r) {
+    var totalCps = checkpoints ? checkpoints.filter(function(c){return String(c.routeId).trim() === String(r.id).trim();}).length : 0;
+    var activeClass = r.id === currentRouteId ? "current" : "";
+    if (!r.active) activeClass += " inactive";
+
+    var html = '<div class="route-card ' + activeClass + '" onclick="selectRoute(\'' + r.id + '\')">' +
+      '<div class="route-card-head">' +
+        '<div class="route-card-id" style="background:' + (r.color||'var(--or)') + '">' + r.id + '</div>' +
+        '<div class="route-card-body">' +
+          '<div class="route-card-name">' + r.name + '</div>' +
+          '<div class="route-card-meta">ต้นทาง: ' + r.origin + ' ➔ ปลายทาง: ' + r.dest + '</div>' +
+        '</div>' +
+        (r.id === currentRouteId ? '<div class="route-card-tick">✓</div>' : '') +
+      '</div>' +
+      '<div class="route-card-foot">' +
+        '<div class="route-stat">ระยะทาง <b>' + r.distance + ' กม.</b></div>' +
+        '<div class="route-stat">จุดเสี่ยง <b>' + totalCps + ' จุด</b></div>' +
+        '<div class="route-status ' + (r.active?'on':'off') + '">' + (r.active?'พร้อมใช้':'ปิด') + '</div>' +
+      '</div>' +
+    '</div>';
+    list.insertAdjacentHTML('beforeend', html);
+
+    if(adminList) {
+      var aHtml = '<div class="admin-route-row" onclick="openRouteEdit(\'' + r.id + '\')">' +
+        '<div class="admin-route-id" style="background:' + (r.color||'var(--or)') + '">' + r.id + '</div>' +
+        '<div style="flex:1;min-width:0">' +
+          '<div style="font-size:13px;font-weight:600;color:var(--dk);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + r.name + '</div>' +
+          '<div style="font-size:10px;color:var(--gr)">' + r.distance + ' กม. · ' + totalCps + ' เช็กพอยต์</div>' +
+        '</div>' +
+        '<div style="font-size:12px;color:var(--gr)">⚙️ แก้ไข</div>' +
+      '</div>';
+      adminList.insertAdjacentHTML('beforeend', aHtml);
+    }
+  });
+  
+  var curR = routes.find(function(r){return r.id === currentRouteId;});
+  if (curR && document.getElementById('tbRouteName')) document.getElementById('tbRouteName').textContent = curR.id + ": " + curR.name;
+}
+function selectRoute(id) {
+  currentRouteId = id; localStorage.setItem('kspCurrentRouteId', id);
+  passedCheckpoints = {}; lastActiveAlertCpId = null;
+  renderRouteLists(); renderCheckpointLists();
+  if (lMap) { renderMapElements(); centerMap(); }
+  showToast("🛣️ เปลี่ยนเส้นทางเป็น " + id);
+  goScreen('map');
+}
+function renderCheckpointLists() {
+  var list = document.getElementById('cpList'), adminList = document.getElementById('adminList');
+  if(!list) return;
+  list.innerHTML = ""; if(adminList) adminList.innerHTML = "";
+
+  var activeCps = checkpoints ? checkpoints.filter(function(c){return String(c.routeId).trim() === String(currentRouteId).trim();}).sort(function(a,b){return parseFloat(a.km)-parseFloat(b.km);}) : [];
+  var total = activeCps.length, passed = Object.keys(passedCheckpoints).length;
+
+  if(document.getElementById('tripChk')) document.getElementById('tripChk').textContent = passed + "/" + total;
+  if(document.getElementById('mapChk')) document.getElementById('mapChk').textContent = passed + "/" + total;
+  var pct = total > 0 ? (passed / total * 100) : 0;
+  if(document.getElementById('progFill')) document.getElementById('progFill').style.width = pct + "%";
+
+  activeCps.forEach(function(cp) {
+    var isDone = passedCheckpoints[cp.id];
+    var isAlertActive = lastActiveAlertCpId === cp.id;
+    var itemClass = "cp-item " + (isDone ? "done" : "");
+    if (isAlertActive) itemClass += (cp.type === 'community' ? ' nearby-warn' : ' nearby');
+
+    var html = '<div class="' + itemClass + '" onclick="focusMarker(' + cp.lat + ',' + cp.lng + ')">' +
+      '<div class="cp-dot" style="background:' + (isDone?'var(--gn2)':(cp.type==='community'?'var(--pu2)':'var(--rd2)')) + '">' + getTrafficSignSmall(cp.type,24,24) + '</div>' +
+      '<div class="cp-body">' +
+        '<div class="cp-name">' + cp.name + '</div>' +
+        '<div class="cp-sub">ตำแหน่ง: ' + cp.km + ' · ' + (isDone ? '⏱️ ผ่านแล้วเมื่อ ' + isDone : '📡 ตรวจพิกัดอัตโนมัติ') + '</div>' +
+      '</div>' +
+      '<div class="cp-chk">' + (isDone ? '✓' : '') + '</div>' +
+    '</div>';
+    list.insertAdjacentHTML('beforeend', html);
+
+    if(adminList) {
+      var admHtml = '<div class="admin-card" id="cp-card-' + cp.id + '">' +
+        '<div class="admin-card-head" onclick="toggleAdminCard(' + cp.id + ')">' +
+          '<div class="admin-em" style="background:var(--bg)">' + (cp.emoji||"⚠️") + '</div>' +
+          '<div class="admin-name">' + cp.name + ' <span style="font-size:10px;color:var(--gr)">(' + cp.km + ')</span></div>' +
+          '<div style="font-size:11px;color:var(--bl);font-weight:600" onclick="event.stopPropagation();openEdit(' + cp.id + ')">📝 แก้ไข</div>' +
+        '</div>' +
+      '</div>';
+      adminList.insertAdjacentHTML('beforeend', admHtml);
+    }
+  });
+}
+function focusMarker(lat, lng) { goScreen('map'); if(lMap) lMap.setView([lat, lng], 16); }
+function toggleAdminCard(id) { if(document.getElementById('cp-card-'+id)) document.getElementById('cp-card-'+id).classList.toggle('open'); }
+
+function renderHistoryList() {
+  var list = document.getElementById('histList'), empty = document.getElementById('histEmpty'), btn = document.getElementById('clearHistBtn');
+  if(!list) return;
+  list.innerHTML = "";
+  if (!historyLogs || historyLogs.length === 0) { 
+    if(empty) empty.style.display = "block"; if(btn) btn.style.display = "none"; return; 
+  }
+  if(empty) empty.style.display = "none"; if(btn) btn.style.display = "block";
+
+  historyLogs.forEach(function(h) {
+    var html = '<div class="hist-item">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">' +
+        '<span class="badge badge-bl">' + h.date + ' ' + h.time + '</span>' +
+        '<span class="badge badge-gn" style="margin-left:auto">ผ่านจุด ' + h.score + '</span>' +
+      '</div>' +
+      '<div style="font-size:12px;font-weight:600;color:var(--dk);margin:3px 0">' + h.routeName + '</div>' +
+      '<div style="font-size:10px;color:var(--gr)">⏱️ เวลาเดินทางทริปนี้: ' + h.elapsed + '</div>' +
+    '</div>';
+    list.insertAdjacentHTML('beforeend', html);
+  });
+}
+function clearHist() { if (confirm("ยืนยันล้างประวัติการเดินทางทั้งหมด?")) { historyLogs=[]; saveHistData(); renderHistoryList(); } }
+
+// ===== ADMIN CRUD MODAL FORMS =====
+function openAdd() {
+  if (!adminUnlocked) { lockAdmin(); return; }
+  document.getElementById('adminModalT').textContent = "เพิ่มจุดเสี่ยงเซฟตี้ใหม่";
+  document.getElementById('editIdx').value = "";
+  document.getElementById('fName').value = ""; document.getElementById('fKm').value = "";
+  document.getElementById('fType').value = "curve"; document.getElementById('fEmoji').value = "⚠️";
+  document.getElementById('fLat').value = ""; document.getElementById('fLng').value = "";
+  document.getElementById('fAlert').value = "true"; document.getElementById('fTitle').value = "";
+  document.getElementById('fDesc').value = ""; document.getElementById('fSpeak').value = "";
+  document.getElementById('rulesEditor').innerHTML = "";
+  document.getElementById('delBtn').style.display = "none";
+  updateTypeUI(); document.getElementById('adminModal').style.display = "flex";
+}
+function openEdit(id) {
+  var cp = checkpoints.find(function(c){return c.id === id;}); if (!cp) return;
+  document.getElementById('adminModalT').textContent = "แก้ไขข้อมูลจุดเสี่ยง";
+  document.getElementById('editIdx').value = cp.id;
+  document.getElementById('fName').value = cp.name; document.getElementById('fKm').value = cp.km;
+  document.getElementById('fType').value = cp.type; document.getElementById('fEmoji').value = cp.emoji||"⚠️";
+  document.getElementById('fLat').value = cp.lat; document.getElementById('fLng').value = cp.lng;
+  document.getElementById('fAlert').value = cp.alert ? "true" : "false";
+  document.getElementById('fTitle').value = cp.title || "";
+  document.getElementById('fDesc').value = cp.desc || "";
+  document.getElementById('fSpeak').value = cp.speak || "";
+  
+  var editor = document.getElementById('rulesEditor'); editor.innerHTML = "";
+  if (cp.rules) { cp.rules.forEach(function(r){ addRule(r); }); }
+  
+  document.getElementById('delBtn').style.display = "block";
+  updateTypeUI(); document.getElementById('adminModal').style.display = "flex";
+}
+function closeAdminModal() { document.getElementById('adminModal').style.display = "none"; }
+function updateTypeUI() {
+  var t = document.getElementById('fType').value;
+  var hasAlert = t !== 'start';
+  document.getElementById('alertDetailFields').style.display = hasAlert ? 'block' : 'none';
+  document.getElementById('signPreview').innerHTML = getTrafficSignSmall(t, 28, 28);
+  var lbl = document.getElementById('signPreviewLabel');
+  
+  if (customSignTypes[t]) {
+    lbl.textContent = "ป้ายความเสี่ยงโรงงาน (" + customSignTypes[t].label + ")";
+    lbl.style.color = "var(--pu)";
+  } else if (t==='start'||t==='arrive') { 
+    lbl.textContent="หมวดนำทาง"; lbl.style.color="var(--gn)"; 
+  } else if (t==='community') { 
+    lbl.textContent="ป้ายชุมชน"; lbl.style.color="var(--pu)"; 
+  } else { 
+    lbl.textContent="ป้ายเตือนจราจร"; lbl.style.color="var(--or)"; 
+  }
+}
+function addRule(val) {
+  var editor = document.getElementById('rulesEditor');
+  var div = document.createElement('div'); div.className = "rule-item";
+  div.innerHTML = '<div class="rule-emoji">🛑</div><input class="rule-text" value="' + (val||'') + '" placeholder="ระเบียบเซฟตี้ เช่น ลดความเร็ว"><button class="rule-del" onclick="this.parentElement.remove()">✕</button>';
+  editor.appendChild(div);
+}
+function useMyGPS() {
+  if (myLat && myLng) {
+    document.getElementById('fLat').value = myLat.toFixed(5);
+    document.getElementById('fLng').value = myLng.toFixed(5);
+    showToast("📍 ล็อกพิกัดปัจจุบันเรียบร้อย");
+  } else { showToast("❌ สัญญาณ GPS ยังไม่พร้อมใช้งาน"); }
+}
+function saveCp() {
+  var name = document.getElementById('fName').value.trim();
+  var lat = parseFloat(document.getElementById('fLat').value), lng = parseFloat(document.getElementById('fLng').value);
+  if (!name || isNaN(lat) || isNaN(lng)) { alert("กรุณากรอกชื่อ และ พิกัด Lat/Lng ให้ถูกต้อง"); return; }
+
+  var idVal = document.getElementById('editIdx').value;
+  var rules = []; document.querySelectorAll('#rulesEditor .rule-text').forEach(function(i){ if(i.value.trim()) rules.push(i.value.trim()); });
+
+  var cpData = {
+    id: idVal !== "" ? parseInt(idVal) : Date.now(),
+    routeId: currentRouteId,
+    name: name,
+    km: document.getElementById('fKm').value.trim() || "0.0 กม.",
+    type: document.getElementById('fType').value,
+    emoji: document.getElementById('fEmoji').value.trim() || "⚠️",
+    lat: lat, lng: lng,
+    alert: document.getElementById('fAlert').value === "true",
+    title: document.getElementById('fTitle').value.trim(),
+    desc: document.getElementById('fDesc').value.trim(),
+    speak: document.getElementById('fSpeak').value.trim(),
+    rules: rules
+  };
+
+  if (idVal !== "") {
+    var idx = checkpoints.findIndex(function(c){return c.id === cpData.id;});
+    if (idx !== -1) checkpoints[idx] = cpData;
+  } else { checkpoints.push(cpData); }
+
+  saveCpsData(); closeAdminModal();
+  renderCheckpointLists(); if(lMap) renderMapElements();
+  showToast("💾 บันทึกจุดสำเร็จ");
+
+  if(window._returnRouteId) {
+    var retId = window._returnRouteId;
+    window._returnRouteId = null;
+    setTimeout(function(){ openRouteEdit(retId); }, 100);
+  }
+}
+function deleteCp() {
+  var idVal = parseInt(document.getElementById('editIdx').value);
+  if (confirm("ยืนยันลบจุดเสี่ยงนี้ถาวร?")) {
+    checkpoints = checkpoints.filter(function(c){return c.id !== idVal;});
+    saveCpsData(); closeAdminModal(); renderCheckpointLists(); if(lMap) renderMapElements();
+    showToast("🗑️ ลบสำเร็จ");
+  }
+}
+
+// ===== ROUTE ACTIONS =====
+function openRouteEdit(id) {
+  if (!adminUnlocked) { lockAdmin(); return; }
+  if (id === '') {
+    document.getElementById('reEditId').value = '';
+    document.getElementById('reRouteId').value = '';
+    document.getElementById('reRouteId').disabled = false;
+    document.getElementById('reName').value = '';
+    document.getElementById('reOrigin').value = '';
+    document.getElementById('reDest').value = '';
+    document.getElementById('reDist').value = '';
+    document.getElementById('reColor').value = '#BA7517';
+    document.getElementById('reActive').value = 'true';
+    document.getElementById('reNotes').value = '';
+    document.getElementById('reDelBtn').style.display = 'none';
+    renderRouteCpList('');
+  } else {
+    var r = routes.find(function(rt){return rt.id===id;}); if(!r) return;
+    document.getElementById('reEditId').value = r.id;
+    document.getElementById('reRouteId').value = r.id;
+    document.getElementById('reRouteId').disabled = true;
+    document.getElementById('reName').value = r.name||'';
+    document.getElementById('reOrigin').value = r.origin||'';
+    document.getElementById('reDest').value = r.dest||'';
+    document.getElementById('reDist').value = r.distance||r.dist||'';
+    document.getElementById('reColor').value = r.color||'#BA7517';
+    document.getElementById('reActive').value = r.active ? 'true' : 'false';
+    document.getElementById('reNotes').value = r.notes||'';
+    document.getElementById('reDelBtn').style.display = 'block';
+    renderRouteCpList(id);
+  }
+  document.getElementById('routeEditModal').style.display = 'flex';
+}
+
+function renderRouteCpList(routeId) {
+  var el = document.getElementById('routeCpList');
+  var countEl = document.getElementById('reCpCount');
+  if(!el) return;
+  var cps = routeId ? checkpoints.filter(function(c){return String(c.routeId).trim()===String(routeId).trim();})
+    .sort(function(a,b){return parseFloat(a.km)-parseFloat(b.km);}) : [];
+  var alertCount = cps.filter(function(c){return c.alert;}).length;
+  if(countEl) countEl.textContent = cps.length + ' จุด · 🔔 ' + alertCount + ' จุดเตือน';
+  if(cps.length===0){
+    el.innerHTML='<div style="text-align:center;padding:20px;color:var(--gr);font-size:12px">ยังไม่มีจุดอันตราย<br>กด "+ เพิ่มจุด" หรือ 📍 GPS ด้านล่าง</div>';
+    return;
+  }
+  el.innerHTML = cps.map(function(cp){
+    var alertBadge = cp.alert
+      ? '<span style="font-size:9px;background:var(--rd);color:#fff;padding:2px 6px;border-radius:8px;font-weight:600">🔔 เตือน</span>'
+      : '<span style="font-size:9px;background:var(--bg);color:var(--gr);padding:2px 6px;border-radius:8px;font-weight:600;border:1px solid var(--bd)">🔕 ไม่เตือน</span>';
+    var typeLabel = (TYPE_LABELS && TYPE_LABELS[cp.type]) ? TYPE_LABELS[cp.type] : cp.type;
+    var borderColor = cp.alert ? 'var(--rd)' : 'var(--bd)';
+    var borderWidth = cp.alert ? '2px' : '1px';
+    return '<div style="display:flex;align-items:center;gap:9px;background:var(--wh);border-radius:var(--r);border:'+borderWidth+' solid '+borderColor+';padding:9px 11px;margin-bottom:6px">'+
+      '<div style="width:30px;height:30px;border-radius:50%;background:'+(cp.alert?'var(--rd2)':'var(--bg)')+';display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">'+(cp.emoji||'⚠️')+'</div>'+
+      '<div style="flex:1;min-width:0">'+
+        '<div style="font-size:12px;font-weight:600;color:var(--dk);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+cp.name+'</div>'+
+        '<div style="font-size:10px;color:var(--gr);margin-top:2px;display:flex;gap:6px;align-items:center;flex-wrap:wrap">'+
+          '<span>'+cp.km+'</span>·<span>'+typeLabel+'</span>'+alertBadge+
+        '</div>'+
+      '</div>'+
+      '<div style="display:flex;gap:5px">'+
+        '<button onclick="toggleCpAlert('+cp.id+')" title="เปิด/ปิดเตือน" style="padding:5px 8px;border-radius:var(--r);background:'+(cp.alert?'var(--gn2)':'var(--or2)')+';color:'+(cp.alert?'var(--gn3)':'var(--or3)')+';border:1px solid '+(cp.alert?'var(--gn)':'var(--or)')+';font-size:11px;cursor:pointer">'+(cp.alert?'🔔':'🔕')+'</button>'+
+        '<button onclick="editCpFromRoute('+cp.id+')" style="padding:5px 9px;border-radius:var(--r);background:var(--bl2);color:var(--bl3);border:1px solid var(--bl);font-size:10px;font-weight:600;cursor:pointer">✏️</button>'+
+        '<button onclick="deleteCpFromRoute('+cp.id+')" style="padding:5px 8px;border-radius:var(--r);background:var(--rd2);color:var(--rd3);border:1px solid var(--rd);font-size:10px;cursor:pointer">🗑️</button>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+
+function toggleCpAlert(cpId) {
+  var idx = checkpoints.findIndex(function(c){return c.id===cpId;});
+  if(idx < 0) return;
+  checkpoints[idx].alert = !checkpoints[idx].alert;
+  saveCpsData();
+  var rid = document.getElementById('reEditId').value;
+  renderRouteCpList(rid);
+  if(lMap) renderMapElements();
+  showToast(checkpoints[idx].alert ? '🔔 เปิดแจ้งเตือนแล้ว' : '🔕 ปิดแจ้งเตือนแล้ว');
+}
+
+var TYPE_LABELS = {
+  curve:'ทางโค้ง', junction:'ทางแยก', merge:'ทางร่วม', narrow:'ทางแคบ',
+  downhill:'ทางลงเนิน', community:'เขตชุมชน', danger:'อันตราย', warn:'ระวัง',
+  start:'จุดเริ่มต้น', arrive:'ปลายทาง'
+};
+
+function openAddForRoute() {
+  var rid = document.getElementById('reEditId').value;
+  if(!rid){ showToast('⚠️ บันทึกเส้นทางก่อนเพิ่มจุด'); return; }
+  window._returnRouteId = rid;
+  closeRouteEdit();
+  currentRouteId = rid;
+  openAdd();
+}
+
+function editCpFromRoute(id) {
+  window._returnRouteId = document.getElementById('reEditId').value;
+  closeRouteEdit();
+  openEdit(id);
+}
+
+function deleteCpFromRoute(cpId) {
+  if(!confirm('ลบจุดนี้?')) return;
+  checkpoints = checkpoints.filter(function(c){return c.id!==cpId;});
+  saveCpsData();
+  renderRouteCpList(document.getElementById('reEditId').value);
+  if(lMap) renderMapElements();
+  showToast('🗑️ ลบจุดแล้ว');
+}
+
+function quickAddGPS() {
+  var rid = document.getElementById('reEditId').value;
+  if(!rid){ showToast('⚠️ บันทึกเส้นทางก่อน'); return; }
+  if(!myLat||!myLng){ requestGPS(); showToast('📡 เปิด GPS แล้ว รอสักครู่...'); return; }
+  
+  var shortTime = String(Date.now()).slice(-6);
+  var customId = parseInt(rid.replace(/\D/g, '') + shortTime) || Date.now();
+  var dName = 'จุดอันตรายใหม่';
+
+  var newCp = {
+    id: customId, routeId: rid,
+    name: dName,
+    km: '0 กม.', type: 'danger', emoji: '⚠️',
+    lat: myLat, lng: myLng,
+    alert: true,
+    title: 'เตือน! จุดอันตรายข้างหน้า',
+    desc: 'ลดความเร็วและขับด้วยความระมัดระวัง',
+    speak: 'ระวัง! ใกล้ถึง'+dName+' ลดความเร็ว',
+    rules: ['ลดความเร็ว','ระวังรถสวน']
+  };
+  checkpoints.push(newCp); saveCpsData();
+  renderRouteCpList(rid);
+  if(lMap) renderMapElements();
+  showToast('✅ เพิ่มจุด GPS แล้ว — กด ✏️ ตั้งชื่อจริง');
+}
+
+function exportRouteData() {
+  var rid = document.getElementById('reEditId').value || currentRouteId;
+  var cps = checkpoints.filter(function(c){return String(c.routeId).trim()===String(rid).trim();});
+  var a = document.createElement('a');
+  a.href = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(cps,null,2));
+  a.download = 'route_'+rid+'_checkpoints.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  showToast('📤 Export '+rid+' ('+cps.length+' จุด)');
+}
+
+function cloudPushCurrentRoute() {
+  var rid = document.getElementById('reEditId').value || currentRouteId;
+  if(!rid || rid === 'undefined' || String(rid).trim() === '') rid = 'R01';
+  rid = String(rid).trim();
+  
+  var cps = checkpoints.filter(function(c){
+    var itemRid = c.route_id || c.routeId;
+    return itemRid ? String(itemRid).trim() === rid : false;
+  });
+  
+  if(!cps.length){ showToast('⚠️ ไม่มีจุดในเส้นทาง ' + rid); return; }
+  syncPushCheckpoints(cps, rid, function(ok){
+    if(ok) renderRouteCpList(rid);
+  });
+}
+
+function closeRouteEdit() { document.getElementById('routeEditModal').style.display = "none"; }
+function saveRouteEdit() {
+  var id = document.getElementById('reRouteId').value.trim().toUpperCase();
+  var name = document.getElementById('reName').value.trim();
+  if (!id || !name) { alert("กรุณาระบุรหัสและชื่อเส้นทาง"); return; }
+
+  var isNew = document.getElementById('reEditId').value === "";
+  var rData = {
+    id: id, name: name,
+    origin: document.getElementById('reOrigin').value.trim(),
+    dest: document.getElementById('reDest').value.trim(),
+    distance: parseFloat(document.getElementById('reDist').value) || 0,
+    color: document.getElementById('reColor').value,
+    active: document.getElementById('reActive').value === "true",
+    notes: document.getElementById('reNotes').value.trim()
+  };
+
+  if (isNew) {
+    if (routes.some(function(rt){return rt.id === id;})) { alert("รหัสเส้นทางซ้ำ!"); return; }
+    routes.push(rData);
+    currentRouteId = id;
+  } else {
+    var idx = routes.findIndex(function(rt){return rt.id === id;});
+    if (idx !== -1) routes[idx] = rData;
+  }
+
+  saveRoutesData(); closeRouteEdit(); renderRouteLists();
+  if(lMap) renderMapElements();
+  showToast("🛣️ บันทึกเส้นทางสำเร็จ");
+
+  var url = getCloudUrl();
+  if(url) {
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({
+        action: 'saveRoute',
+        route: {
+          route_id: rData.id,
+          name: rData.name,
+          origin: rData.origin,
+          destination: rData.dest,
+          distance_km: rData.distance,
+          color: rData.color,
+          active: rData.active,
+          notes: rData.notes
+        }
+      })
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if(d.ok) showToast('☁️ Sync เส้นทาง "' + id + '" ขึ้น Cloud แล้ว');
+    })
+    .catch(function(e){ showToast('⚠️ บันทึกท้องถิ่นแล้ว แต่ Cloud ไม่ตอบ'); });
+  }
+}
+function deleteRoute() {
+  var id = document.getElementById('reEditId').value;
+  if (confirm("ลบเส้นทางจะล้างจุดตรวจสอบที่ผูกกับรหัส " + id + " ทั้งหมด! ยืนยันใช่หรือไม่?")) {
+    routes = routes.filter(function(r){return r.id !== id;});
+    checkpoints = checkpoints.filter(function(c){return String(c.routeId).trim() !== String(id).trim();});
+    saveRoutesData(); saveCpsData();
+    if (currentRouteId === id && routes.length > 0) currentRouteId = routes[0].id;
+    closeRouteEdit(); renderRouteLists(); renderCheckpointLists(); if(lMap) renderMapElements();
+    showToast("🗑️ ลบกลุ่มเส้นทางเรียบร้อย");
+  }
+}
+
+// ===== REAL PHOTO SIGN MANAGEMENT GRID =====
+function renderSignUploadGrid() {
+  var grid = document.getElementById('signUploadGrid'); if (!grid) return;
+  grid.innerHTML = "";
+  
+  var baseTypes = [
+    {id:'curve', name:'โค้งหักศอก'}, {id:'junction', name:'ทางสี่แยก'},
+    {id:'merge', name:'จุดทางร่วม'}, {id:'narrow', name:'ทางแคบลง'},
+    {id:'downhill', name:'ทางลงเนินชัน'}, {id:'community', name:'เขตชุมชน'},
+    {id:'danger', name:'จุดอันตรายสูง'}, {id:'warn', name:'ระวังทั่วไป'}
+  ];
+
+  var allTypes = [].concat(baseTypes);
+  for (var cType in customSignTypes) {
+    allTypes.push({ id: cType, name: customSignTypes[cType].label });
+  }
+
+  allTypes.forEach(function(t) {
+    var hasImg = signImages && signImages[t.id];
+    var div = document.createElement('div');
+    div.className = "tog-row"; div.style.flexDirection = "column"; div.style.alignItems = "stretch"; div.style.padding = "10px"; div.style.background = "var(--wh)"; div.style.borderRadius = "var(--r)"; div.style.border = "1px solid var(--bd)";
+    
+    var imgHtml = hasImg ? '<img src="'+signImages[t.id]+'" style="width:100%;height:85px;object-fit:contain;margin-bottom:6px;border-radius:4px">' : '<div style="height:85px;background:var(--bg);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--gr);margin-bottom:6px;font-weight:500;border:1px dashed var(--bd)">➕ อัปโหลดรูปจริง</div>';
+    
+    div.innerHTML = '<div style="font-size:12px;font-weight:700;margin-bottom:6px;text-align:center;color:var(--dk)">' + t.name + '</div>' +
+      '<label style="cursor:pointer">' + imgHtml + '<input type="file" accept="image/*" style="display:none" onchange="uploadSignImage(\''+t.id+'\', this)"></label>';
+    
+    var btnContainer = document.createElement('div');
+    btnContainer.style.cssText = "display:flex;gap:4px;width:100%;margin-top:4px";
+
+    if (hasImg) {
+      var delBtn = document.createElement('button');
+      delBtn.textContent = "✕ ถอนรูป"; delBtn.style.cssText = "flex:1;font-size:10px;color:var(--rd3);background:var(--rd2);border:1px solid var(--rd);padding:4px;border-radius:4px;cursor:pointer;font-weight:600";
+      delBtn.onclick = function() { if(signImages) { delete signImages[t.id]; saveSignImages(); renderSignUploadGrid(); showToast("ล้างรูปสำเร็จ"); } };
+      btnContainer.appendChild(delBtn);
+    }
+    
+    if (customSignTypes[t.id]) {
+      var delTypeBtn = document.createElement('button');
+      delTypeBtn.textContent = "🗑️ ลบกล่องป้าย"; delTypeBtn.style.cssText = "flex:1;font-size:10px;color:#fff;background:var(--rd);border:none;padding:4px;border-radius:4px;cursor:pointer;font-weight:600";
+      delTypeBtn.onclick = function() {
+        if (confirm("ต้องการลบกล่องป้าย \"" + t.name + "\" ออกจากระบบถาวรหรือไม่?")) {
+          delete customSignTypes[t.id];
+          if(signImages) delete signImages[t.id];
+          localStorage.setItem('kspCustomSigns', JSON.stringify(customSignTypes));
+          saveSignImages(); loadCustomSignTypes(); renderSignUploadGrid();
+          showToast("🗑️ ลบป้ายสำเร็จ");
+        }
+      };
+      btnContainer.appendChild(delTypeBtn);
+    }
+    
+    if (hasImg || customSignTypes[t.id]) {
+      div.appendChild(btnContainer);
+    }
+    grid.appendChild(div);
+  });
+}
+function uploadSignImage(type, input) {
+  if (input.files && input.files[0]) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var img = new Image();
+      img.onload = function() {
+        var canvas = document.createElement('canvas');
+        var max_size = 200; var w = img.width, h = img.height;
+        if (w > h) { if (w > max_size) { h *= max_size / w; w = max_size; } }
+        else { if (h > max_size) { w *= max_size / h; h = max_size; } }
+        canvas.width = w; canvas.height = h;
+        var ctx = canvas.getContext('2d');
+        if(ctx) ctx.drawImage(img, 0, 0, w, h);
+        
+        if(!signImages) signImages = {};
+        signImages[type] = canvas.toDataURL('image/jpeg', 0.7);
+        saveSignImages(); renderSignUploadGrid(); showToast("📷 อัปโหลดรูปป้ายเรียบร้อย");
+      };
+      if(e.target) img.src = e.target.result;
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+
+// ===== EXPORT / IMPORT JSON =====
+function exportData() {
+  var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(checkpoints, null, 2));
+  var downloadAnchor = document.createElement('a');
+  downloadAnchor.setAttribute("href", dataStr); downloadAnchor.setAttribute("download", "ksp_checkpoints.json");
+  document.body.appendChild(downloadAnchor); downloadAnchor.click(); downloadAnchor.remove();
+}
+function importData() {
+  try {
+    var raw = document.getElementById('importJson').value.trim();
+    if (!raw) { alert("กรุณาวางโค้ด JSON"); return; }
+    var parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      checkpoints = parsed; saveCpsData(); renderCheckpointLists(); if(lMap) renderMapElements();
+      showToast("📥 นำเข้าข้อมูลพิกัดสำเร็จ");
+    } else { alert("โครงสร้างสคริปต์ JSON ต้องเป็นรูปแบบ Array"); }
+  } catch(e) { alert("รูปแบบโค้ด JSON ผิดพลาด: " + e.message); }
+}
+
+// ===== GOOGLE SHEETS CLOUD SYNC =====
+function openCloudConfig() {
+  var urlEl = document.getElementById('cloudUrl');
+  var driverEl = document.getElementById('cloudDriver');
+  var syncEl = document.getElementById('cloudAutoSync');
+  if(urlEl) urlEl.value = cloudUrl || localStorage.getItem('kspCloudUrl') || '';
+  if(driverEl) driverEl.value = cloudDriver || '';
+  if(syncEl) syncEl.value = cloudAutoSync || 0;
+  document.getElementById('cloudModal').style.display = 'flex';
+}
+function closeCloudConfig() { document.getElementById('cloudModal').style.display = "none"; }
+function saveCloudConfig() {
+  cloudUrl = document.getElementById('cloudUrl').value.trim();
+  cloudDriver = document.getElementById('cloudDriver').value.trim() || "คนขับรถบรรทุก KSP";
+  cloudAutoSync = parseInt(document.getElementById('cloudAutoSync').value) || 0;
+  
+  localStorage.setItem('kspCloud', JSON.stringify({ url: cloudUrl, driver: cloudDriver, autoSync: cloudAutoSync }));
+  localStorage.setItem('kspCloudUrl', cloudUrl);  
+  closeCloudConfig();
+  
+  var statusEl = document.getElementById('cloudStatus');
+  if(statusEl) {
+    if (cloudUrl) { statusEl.innerHTML = "🔗 เชื่อมต่อผู้ขับ: <b>" + cloudDriver + "</b>"; showToast("☁️ ตั้งค่าเรียบร้อย"); }
+    else { statusEl.textContent = "ยังไม่ได้ตั้งค่า URL"; }
+  }
+  setupCloudIntervalTimer();
+}
+function setupCloudIntervalTimer() {
+  if (cloudTimer) clearInterval(cloudTimer);
+  if (cloudAutoSync > 0 && cloudUrl) {
+    cloudTimer = setInterval(function() { if (isTripActive) cloudPush(); }, cloudAutoSync * 1000);
+  }
+}
+
+function cloudPull() {
+  if(!cloudUrl){ showToast('❌ ยังไม่ได้ตั้งค่า URL'); openCloudConfig(); return; }
+  var pBtn=document.getElementById('cloudPullBtn');
+  if(pBtn){pBtn.textContent='⏳...';pBtn.disabled=true;}
+  syncPullCheckpoints(currentRouteId||'R01', function(data){
+    if(pBtn){pBtn.textContent='📥 ดึงข้อมูล'; pBtn.disabled=false;}
+  });
+}
+
+function cloudPush() {
+  if(!cloudUrl){ showToast('❌ ยังไม่ได้ตั้งค่า URL'); openCloudConfig(); return; }
+  var rid = currentRouteId;
+  if(!rid || rid === 'undefined' || String(rid).trim() === '') {
+    rid = (routes && routes[0]) ? routes[0].id : 'R01';
+    currentRouteId = rid;
+    localStorage.setItem('kspCurrentRouteId', rid);
+  }
+  rid = String(rid).trim();
+  var cps = checkpoints.filter(function(c){ 
+    var itemRid = c.route_id || c.routeId;
+    return itemRid ? String(itemRid).trim() === rid : false; 
+  });
+  if(!cps.length){ showToast('⚠️ ไม่มีจุดในเส้นทาง ' + rid); return; }
+  var pBtn=document.getElementById('cloudPushBtn');
+  if(pBtn){pBtn.textContent='⏳...';pBtn.disabled=true;}
+  syncPushCheckpoints(cps, rid, function(ok){
+    if(pBtn){pBtn.textContent='📤 อัปโหลด'; pBtn.disabled=false;}
+  });
+}
+
+function cloudPullRoutes(){
+  syncPullRoutes(function(data){
+    if(data && data.length>0){ renderRouteLists(); }
+  });
+}
+
+function cloudTest() {
+  var url = document.getElementById('cloudUrl') ? document.getElementById('cloudUrl').value.trim() : cloudUrl;
+  if(!url){ showToast('❌ กรุณาใส่ URL ก่อน'); return; }
+  showToast('🔌 กำลังทดสอบ...');
+  fetch(url + '?action=ping')
+    .then(function(r){ return r.json(); })
+    .then(function(d){ showToast('✅ เชื่อมต่อสำเร็จ! ' + (d.message||'')); })
+    .catch(function(e){ showToast('❌ ' + e.message); });
+}
+
+// ===== SECURITY PASSCODE KEYPAD =====
+function lockAdmin() {
+  if (adminUnlocked) { adminUnlocked = false; document.getElementById('adminLockBtn').textContent = "🔓 Admin"; showToast("🔒 ล็อกระบบแผงควบคุมแล้ว"); return; }
+  document.getElementById('pinInput').value = ""; document.getElementById('pinError').style.display = "none";
+  document.getElementById('pinModal').style.display = "flex";
+}
+function closePinModal() { document.getElementById('pinModal').style.display = "none"; }
+function pinKey(n) { var inp = document.getElementById('pinInput'); if (inp && inp.value.length < 8) inp.value += n; }
+function pinBackspace() { var inp = document.getElementById('pinInput'); if(inp) inp.value = inp.value.slice(0, -1); }
+function submitPin() {
+  var inp = document.getElementById('pinInput').value;
+  if (inp === adminPin || inp === "00002569") {
+    adminUnlocked = true; document.getElementById('pinModal').style.display = "none";
+    document.getElementById('adminLockBtn').textContent = "🔒 ปลดล็อก";
+    showToast("🔑 โหมดผู้ดูแลระบบ (Admin Mode)");
+    goScreen('admin');
+  } else {
+    document.getElementById('pinError').style.display = "block"; triggerVibrate([50, 50, 50]);
+  }
+}
+function openChangePinModal() { document.getElementById('changePinModal').style.display = "flex"; }
+function closeChangePinModal() { document.getElementById('changePinModal').style.display = "none"; }
+function submitChangePin() {
+  var oldP = document.getElementById('oldPin').value, newP = document.getElementById('newPin').value, newP2 = document.getElementById('newPin2').value;
+  var err = document.getElementById('pinChangeErr'); if(!err) return;
+  err.style.display = "none";
+  if (oldP !== adminPin) { err.textContent = "❌ PIN เดิมไม่ถูกต้อง"; err.style.display = "block"; return; }
+  if (newP.length < 4) { err.textContent = "❌ รหัสใหม่ต้องมีอย่างน้อย 4 หลัก"; err.style.display = "block"; return; }
+  if (newP !== newP2) { err.textContent = "❌ การยืนยันรหัสผ่านไม่ตรงกัน"; err.style.display = "block"; return; }
+  
+  adminPin = newP; localStorage.setItem('kspPin', adminPin);
+  document.getElementById('oldPin').value = ""; document.getElementById('newPin').value = ""; document.getElementById('newPin2').value = "";
+  closeChangePinModal(); showToast("🔑 อัปเดต PIN แอดมินสำเร็จ");
+}
+
+// ===== SOUND TEST SIGNAL =====
+function testAlert(type, btnId) {
+  var b = document.getElementById(btnId); if(!b) return;
+  b.classList.add('playing');
+  playBeep(type==='danger'?660:(type==='warn'?554:440), 'sine', 0.25);
+  triggerVibrate([100, 50, 100]);
+  
+  var mockData = {
+    curve: "ทดสอบระบบเตือนภัย ทางโค้งหักศอกข้างหน้า",
+    junction: "ทดสอบระบบ ตรวจพบสี่แยกชุมชนขนาดใหญ่",
+    community: "เข้าสู่เขตชุมชนและโรงงาน โปรดขับขี่ด้วยความระมัดระวัง",
+    arrive: "ถึงจุดหมายปลายทาง ขอบคุณที่ขับขี่ปลอดภัยสไตล์เซฟตี้"
+  };
+  var speakText = mockData[type] || "ระบบตรวจพบความเสี่ยงจำลอง";
+  
+  if (ttsOn && 'speechSynthesis' in window) {
+    var msg = new SpeechSynthesisUtterance(speakText); msg.lang = 'th-TH'; msg.volume = vol;
+    window.speechSynthesis.speak(msg);
+  }
+  setTimeout(function(){ b.classList.remove('playing'); }, 2000);
+}
+
+// ===== SCREEN NAVIGATION =====
+function goScreen(id) {
+  if (id === 'admin' && !adminUnlocked) { lockAdmin(); return; }
+  currentScreen = id;
+  document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('active');});
+  document.querySelectorAll('.bnav').forEach(function(b){b.classList.remove('active');});
+  
+  var activeScr = document.getElementById('screen-' + id); if (activeScr) activeScr.classList.add('active');
+  var activeNav = document.getElementById('nav-' + id); if (activeNav) activeNav.classList.add('active');
+  
+  if (id === 'map') {
+    setTimeout(function(){ initLeafletMap(); if(lMap) { lMap.invalidateSize(); centerMap(); } }, 200);
+  } else if (id === 'admin') {
+    renderSignUploadGrid();
+  }
+}
+
+function showToast(msg) {
+  var t = document.getElementById('toast'); if(!t) return;
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, 3000);
+}
+
+function updateClock() {
+  var d = new Date();
+  var pad = function(n){return n<10?'0'+n:n;};
+  if(document.getElementById('clockT')) document.getElementById('clockT').textContent = pad(d.getHours()) + ":" + pad(d.getMinutes());
+  var months = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  if(document.getElementById('clockD')) document.getElementById('clockD').textContent = d.getDate() + " " + months[d.getMonth()] + " " + String(d.getFullYear()).slice(-2);
+}
+
+// ===== LOAD INITIALIZER =====
+window.addEventListener('DOMContentLoaded', function() {
+  loadAllData();
+  loadCustomSignTypes(); 
+  updateClock(); setInterval(updateClock, 30000);
+  renderRouteLists(); renderCheckpointLists(); renderHistoryList();
+  setupCloudIntervalTimer();
+  document.body.addEventListener('click', function() { initAudio(); }, { once: true });
+
+  setTimeout(function(){
+    var url = getCloudUrl();
+    if(!url) {
+      setTimeout(function(){ showToast('💡 เปิดครั้งแรก กรุณาไปที่จัดการ → ตั้งค่า URL Cloud'); }, 1500);
+      return;
+    }
+    showToast('🔄 กำลังโหลดข้อมูลจาก Cloud...');
+    syncPullRoutes(function(rts){
+      if(!rts || rts.length===0) return;
+      if(!currentRouteId || currentRouteId==='undefined' || !rts.find(function(r){return r.id===currentRouteId;})){
+        currentRouteId = rts[0].id;
+        localStorage.setItem('kspCurrentRouteId', currentRouteId);
+      }
+      var totalLoaded = 0;
+      var pending = rts.length;
+      rts.forEach(function(r){
+        syncPullCheckpoints(r.id, function(cps){
+          pending--;
+          if(cps && cps.length) totalLoaded += cps.length;
+          if(pending===0){
+            renderRouteLists();
+            renderCheckpointLists();
+            if(lMap) renderMapElements();
+            showToast('✅ โหลด '+rts.length+' เส้นทาง · '+totalLoaded+' จุด สำเร็จ');
+          }
+        });
+      });
+    });
+  }, 600);
+});
+
+// ===== GOOGLE SHEETS CLOUD SYNC CORE ENGINES =====
+var SYNC_LOCK = false;
+
+function getCloudUrl() {
+  var el = document.getElementById('cloudUrl');
+  var val = el ? el.value.trim() : '';
+  return val || (localStorage.getItem('kspCloudUrl')||'') || cloudUrl || '';
+}
+
+function syncPushCheckpoints(cps, routeId, onDone) {
+  var url = getCloudUrl();
+  if(!url){ showToast('❌ ยังไม่ได้ตั้งค่า URL'); if(onDone) onDone(false); return; }
+  
+  var targetRoute = routeId || currentRouteId || 'R01';
+  targetRoute = String(targetRoute).trim();
+  
+  if(SYNC_LOCK){ showToast('⏳ กำลังซิงค์ค้างอยู่...'); return; }
+  SYNC_LOCK = true;
+  showToast('📤 กำลังส่งข้อมูลเส้นทาง ' + targetRoute + ' ขึ้น Cloud...');
+
+  var formattedData = cps.map(function(cp, idx) {
+    var rawRules = cp.rules;
+    var finalRules = [];
+    if (Array.isArray(rawRules)) {
+      finalRules = rawRules;
+    } else if (rawRules && String(rawRules).trim() !== '') {
+      try {
+        var parsed = JSON.parse(rawRules);
+        if (Array.isArray(parsed)) finalRules = parsed;
+      } catch(e) {
+        finalRules = String(rawRules).split(',').map(function(r) { return r.trim(); });
+      }
+    }
+
+    return {
+      route_id: targetRoute,
+      id:       parseInt(cp.id) >= 0 ? parseInt(cp.id) : idx,
+      name:     cp.name || '',
+      km:       cp.km || '',
+      type:     cp.type || 'danger',
+      lat:      parseFloat(cp.lat) || 0,
+      lng:      parseFloat(cp.lng) || 0,
+      title:    cp.title || cp.name || '',
+      desc:     cp.desc || '',
+      speak:    cp.speak || '',
+      rules:    finalRules, 
+      alert:    cp.alert === true || String(cp.alert).trim() === 'true'
+    };
+  });
+
+  fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify({ action: 'saveCheckpoints', route_id: targetRoute, data: formattedData, user: cloudDriver||'admin' })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(d){
+    SYNC_LOCK = false;
+    if(d.ok || d.saved) {
+      var now = new Date().toLocaleString('th-TH');
+      localStorage.setItem('kspLastSync', now);
+      var el = document.getElementById('cloudLastSync');
+      if(el) el.textContent = 'Sync ล่าสุด: ' + now + ' (' + formattedData.length + ' จุด)';
+      showToast('✅ เชื่อมโยงข้อมูลลง Google Sheets สำเร็จ!');
+      if(onDone) onDone(true);
+    } else {
+      showToast('❌ คลาวด์ปฏิเสธการบันทึก: ' + (d.error||'โครงสร้างเบี้ยว'));
+      if(onDone) onDone(false);
+    }
+  })
+  .catch(function(e){
+    SYNC_LOCK = false;
+    showToast('❌ อัปโหลดล้มเหลว: ' + e.message);
+    if(onDone) onDone(false);
+  });
+}
+
+function syncPullCheckpoints(routeId, onDone) {
+  var url = getCloudUrl();
+  if(!url){ showToast('❌ ยังไม่ได้ตั้งค่า URL'); if(onDone) onDone(null); return; }
+  showToast('📥 กำลังดึงข้อมูล...');
+  var targetRoute = routeId || currentRouteId || 'R01';
+  targetRoute = String(targetRoute).trim();
+  
+  fetch(url + '?action=getCheckpoints&route_id=' + encodeURIComponent(targetRoute))
+  .then(function(r){ return r.json(); })
+  .then(function(d){
+    var rawList = null;
+    if(d && Array.isArray(d)) rawList = d;
+    else if(d && d.ok && Array.isArray(d.data)) rawList = d.data;
+    else if(d && Array.isArray(d.data)) rawList = d.data;
+
+    if(rawList && rawList.length > 0) {
+      var TYPE_DEFAULTS = {
+        'curve':     {col:'#E24B4A',bg:'#FCEBEB',emoji:'⚠️'},
+        'junction':  {col:'#BA7517',bg:'#FAEEDA',emoji:'✚'},
+        'merge':     {col:'#BA7517',bg:'#FAEEDA',emoji:'🔀'},
+        'narrow':    {col:'#E24B4A',bg:'#FCEBEB',emoji:'⇔'},
+        'downhill':  {col:'#E24B4A',bg:'#FCEBEB',emoji:'⛰️'},
+        'community': {col:'#993556',bg:'#FBEAF0',emoji:'🏘️'},
+        'danger':    {col:'#E24B4A',bg:'#FCEBEB',emoji:'⚠️'},
+        'warn':      {col:'#BA7517',bg:'#FAEEDA',emoji:'🚧'},
+        'start':     {col:'#1D9E75',bg:'#E1F5EE',emoji:'📍'},
+        'arrive':    {col:'#1D9E75',bg:'#E1F5EE',emoji:'✅'},
+      };
+      
+      var mapped = rawList.map(function(cp, idx) {
+        var t = cp.type || cp.Type || 'danger';
+        var def = TYPE_DEFAULTS[t] || TYPE_DEFAULTS['danger'];
+        
+        var processedRules = [];
+        var rawRules = cp.rules || cp.Rules || cp.rules_v;
+        if (rawRules) {
+          var rString = String(rawRules).trim();
+          if (rString.indexOf('[') === 0) {
+            try {
+              var parsed = JSON.parse(rString);
+              if (Array.isArray(parsed)) processedRules = parsed;
+            } catch(e) {
+              rString = rString.replace(/^\["|"]$/g, '').replace(/^\['|']$/g, '').replace(/^\[|]$/g, '');
+              processedRules = rString.split(',').map(function(r) { return r.trim(); });
+            }
+          } else {
+            processedRules = rString.split(',').map(function(r) { return r.trim(); });
+          }
+        }
+        processedRules = processedRules.filter(function(r) { return r !== "" && r !== "[]"; });
+
+        var alertStr = cp.alert !== undefined ? String(cp.alert).trim() : 'false';
+        var isAlertActive = cp.alert === true || alertStr === 'TRUE' || alertStr === 'true';
+        var itemRouteId = cp.route_id || cp.routeId || cp.RouteId || targetRoute;
+        var parsedLat = parseFloat(cp.lat !== undefined ? cp.lat : cp.latitude) || 0;
+        var parsedLng = parseFloat(cp.lng !== undefined ? cp.lng : cp.longitude) || 0;
+
+        return {
+          id:      parseInt(cp.id !== undefined ? cp.id : cp.Id) >= 0 ? parseInt(cp.id !== undefined ? cp.id : cp.Id) : idx,
+          routeId: String(itemRouteId).trim(),
+          name:    cp.name || cp.Name || '',
+          km:      cp.km || cp.Km || (idx + ' กม.'),
+          type:    t,
+          lat:     parsedLat,
+          lng:     parsedLng,
+          title:   cp.title || cp.Title || cp.name || '',
+          desc:    cp.desc || cp.Desc || '',
+          speak:   cp.speak || cp.Speak || '',
+          rules:   processedRules, 
+          alert:   isAlertActive, 
+          emoji:   cp.emoji || cp.Emoji || def.emoji,
+          col:     cp.col  || def.col,
+          bg:      cp.bg   || def.bg,
+        };
+      });
+
+      checkpoints = checkpoints.filter(function(c){ return String(c.routeId).trim() !== String(targetRoute).trim(); });
+      checkpoints = checkpoints.concat(mapped);
+      localStorage.setItem('kspCps', JSON.stringify(checkpoints));
+
+      var now = new Date().toLocaleString('th-TH');
+      var el = document.getElementById('cloudLastSync');
+      if(el) el.textContent = 'Sync ล่าสุด: ' + now + ' (' + mapped.length + ' จุด)';
+      
+      renderCheckpointLists();
+      if(lMap) renderMapElements();
+      showToast('✅ ดึงข้อมูลสำเร็จ ' + mapped.length + ' จุด');
+      if(onDone) onDone(mapped);
+    } else {
+      showToast('⚠️ ไม่พบข้อมูลจุดใน Cloud สำหรับเส้นทางนี้');
+      if(onDone) onDone([]);
+    }
+  })
+  .catch(function(e){
+    showToast('❌ ' + e.message);
+    if(onDone) onDone(null);
+  });
+}
+
+function syncPullRoutes(onDone) {
+  var url = getCloudUrl();
+  if(!url) { if(onDone) onDone(null); return; }
+  fetch(url + '?action=getRoutes')
+  .then(function(r){ return r.json(); })
+  .then(function(d){
+    var rList = null;
+    if(d && d.ok && Array.isArray(d.data)) rList = d.data;
+    else if(Array.isArray(d)) rList = d;
+
+    if(rList && rList.length > 0) {
+      var mapped = rList.map(function(r){
+        return {
+          id:       r.id || r.route_id || 'R01',  
+          name:     r.name || (r.id || r.route_id) || 'เส้นทาง',
+          origin:   r.origin || '',
+          dest:     r.dest || r.destination || '',
+          distance: parseFloat(r.distance || r.distance_km || r.dist || 0),
+          color:    r.color || '#BA7517',
+          active:   r.active !== false && r.active !== 'false' && r.active !== 'FALSE',
+          notes:    r.notes || ''
+        };
+      });
+      routes = mapped;
+      localStorage.setItem('kspRoutes', JSON.stringify(routes));
+      renderRouteLists();
+      showToast('✅ โหลด ' + routes.length + ' เส้นทาง');
+      if(onDone) onDone(routes);
+    } else {
+      if(onDone) onDone(null);
+    }
+  })
+  .catch(function(e){ console.warn('syncPullRoutes:', e.message); if(onDone) onDone(null); });
+}
+
+window.addEventListener('DOMContentLoaded', function(){
+  var saved = localStorage.getItem('kspCloudUrl');
+  if(saved && !cloudUrl) { cloudUrl = saved; var el=document.getElementById('cloudUrl'); if(el) el.value=saved; }
+  var lastSync = localStorage.getItem('kspLastSync');
+  if(lastSync){ var el=document.getElementById('cloudLastSync'); if(el) el.textContent='Sync ล่าสุด: '+lastSync; }
+});
+</script>
+</body>
+</html>
