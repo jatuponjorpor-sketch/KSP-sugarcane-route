@@ -1473,25 +1473,54 @@ function renderRouteCpList(routeId) {
   if(!el) return;
   var cps = routeId ? checkpoints.filter(function(c){return c.routeId===routeId;})
     .sort(function(a,b){return parseFloat(a.km)-parseFloat(b.km);}) : [];
-  if(countEl) countEl.textContent = cps.length + ' จุด';
+  var alertCount = cps.filter(function(c){return c.alert;}).length;
+  if(countEl) countEl.textContent = cps.length + ' จุด · 🔔 ' + alertCount + ' จุดเตือน';
   if(cps.length===0){
     el.innerHTML='<div style="text-align:center;padding:20px;color:var(--gr);font-size:12px">ยังไม่มีจุดอันตราย<br>กด "+ เพิ่มจุด" หรือ 📍 GPS ด้านล่าง</div>';
     return;
   }
   el.innerHTML = cps.map(function(cp){
-    return '<div style="display:flex;align-items:center;gap:9px;background:var(--wh);border-radius:var(--r);border:1px solid var(--bd);padding:9px 11px;margin-bottom:6px">'+
-      '<div style="width:28px;height:28px;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">'+(cp.emoji||'⚠️')+'</div>'+
+    var alertBadge = cp.alert
+      ? '<span style="font-size:9px;background:var(--rd);color:#fff;padding:2px 6px;border-radius:8px;font-weight:600">🔔 เตือน</span>'
+      : '<span style="font-size:9px;background:var(--bg);color:var(--gr);padding:2px 6px;border-radius:8px;font-weight:600;border:1px dashed var(--bd)">🔕 ไม่เตือน</span>';
+    var typeLabel = (TYPE_LABELS && TYPE_LABELS[cp.type]) ? TYPE_LABELS[cp.type] : cp.type;
+    var borderColor = cp.alert ? 'var(--rd)' : 'var(--bd)';
+    var borderWidth = cp.alert ? '2px' : '1px';
+    return '<div style="display:flex;align-items:center;gap:9px;background:var(--wh);border-radius:var(--r);border:'+borderWidth+' solid '+borderColor+';padding:9px 11px;margin-bottom:6px">'+
+      '<div style="width:30px;height:30px;border-radius:50%;background:'+(cp.alert?'var(--rd2)':'var(--bg)')+';display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">'+(cp.emoji||'⚠️')+'</div>'+
       '<div style="flex:1;min-width:0">'+
         '<div style="font-size:12px;font-weight:600;color:var(--dk);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+cp.name+'</div>'+
-        '<div style="font-size:10px;color:var(--gr);margin-top:1px">'+cp.km+' · '+cp.type+(cp.alert?' · 🔔 แจ้งเตือน':'')+'</div>'+
+        '<div style="font-size:10px;color:var(--gr);margin-top:2px;display:flex;gap:6px;align-items:center;flex-wrap:wrap">'+
+          '<span>'+cp.km+'</span>·<span>'+typeLabel+'</span>'+alertBadge+
+        '</div>'+
       '</div>'+
       '<div style="display:flex;gap:5px">'+
+        '<button onclick="toggleCpAlert('+cp.id+')" title="เปิด/ปิดเตือน" style="padding:5px 8px;border-radius:var(--r);background:'+(cp.alert?'var(--gn2)':'var(--or2)')+';color:'+(cp.alert?'var(--gn3)':'var(--or3)')+';border:1px solid '+(cp.alert?'var(--gn)':'var(--or)')+';font-size:11px;cursor:pointer">'+(cp.alert?'🔔':'🔕')+'</button>'+
         '<button onclick="editCpFromRoute('+cp.id+')" style="padding:5px 9px;border-radius:var(--r);background:var(--bl2);color:var(--bl3);border:1px solid var(--bl);font-size:10px;font-weight:600;cursor:pointer">✏️</button>'+
         '<button onclick="deleteCpFromRoute('+cp.id+')" style="padding:5px 8px;border-radius:var(--r);background:var(--rd2);color:var(--rd3);border:1px solid var(--rd);font-size:10px;cursor:pointer">🗑️</button>'+
       '</div>'+
     '</div>';
   }).join('');
 }
+
+// Toggle alert flag แบบเร็ว
+function toggleCpAlert(cpId) {
+  var idx = checkpoints.findIndex(function(c){return c.id===cpId;});
+  if(idx < 0) return;
+  checkpoints[idx].alert = !checkpoints[idx].alert;
+  saveCpsData();
+  var rid = document.getElementById('reEditId').value;
+  renderRouteCpList(rid);
+  if(lMap) renderMapElements();
+  showToast(checkpoints[idx].alert ? '🔔 เปิดแจ้งเตือนแล้ว' : '🔕 ปิดแจ้งเตือนแล้ว');
+}
+
+// Type labels for display
+var TYPE_LABELS = {
+  curve:'ทางโค้ง', junction:'ทางแยก', merge:'ทางร่วม', narrow:'ทางแคบ',
+  downhill:'ทางลงเนิน', community:'เขตชุมชน', danger:'อันตราย', warn:'ระวัง',
+  start:'จุดเริ่มต้น', arrive:'ปลายทาง'
+};
 
 function openAddForRoute() {
   var rid = document.getElementById('reEditId').value;
@@ -1522,17 +1551,22 @@ function quickAddGPS() {
   var rid = document.getElementById('reEditId').value;
   if(!rid){ showToast('⚠️ บันทึกเส้นทางก่อน'); return; }
   if(!myLat||!myLng){ requestGPS(); showToast('📡 เปิด GPS แล้ว รอสักครู่...'); return; }
+  var dName = 'จุดอันตรายใหม่';
   var newCp = {
     id: Date.now(), routeId: rid,
-    name: 'จุดใหม่ (' + (myLat.toFixed(4)) + ')',
+    name: dName,
     km: '0 กม.', type: 'danger', emoji: '⚠️',
     lat: myLat, lng: myLng,
-    alert: true, title: '', desc: '', speak: '', rules: []
+    alert: true,
+    title: 'เตือน! จุดอันตรายข้างหน้า',
+    desc: 'ลดความเร็วและขับด้วยความระมัดระวัง',
+    speak: 'ระวัง! ใกล้ถึง'+dName+' ลดความเร็ว',
+    rules: ['ลดความเร็ว','ระวังรถสวน']
   };
   checkpoints.push(newCp); saveCpsData();
   renderRouteCpList(rid);
   if(lMap) renderMapElements();
-  showToast('✅ เพิ่มจุด GPS แล้ว — กด ✏️ เพื่อตั้งชื่อ');
+  showToast('✅ เพิ่มจุด GPS แล้ว — กด ✏️ ตั้งชื่อจริง');
 }
 
 function exportRouteData() {
@@ -1549,20 +1583,10 @@ function cloudPushCurrentRoute() {
   var rid = document.getElementById('reEditId').value || currentRouteId;
   if(!rid || rid === 'undefined' || String(rid).trim() === '') rid = 'R01';
   rid = String(rid).trim();
-  
-  // 🛠️ ปรับปรุงประสิทธิภาพ: ดักจับทั้งคีย์ c.routeId และ c.route_id 
-  // เพื่อให้มั่นใจว่าระบบจะกวาดเอาพิกัดทุกจุดในเลน R02 ส่งขึ้นคลาวด์ได้ครบ 100% ไม่ตกร่อง
-  var cps = checkpoints.filter(function(c){
-    var itemRid = c.route_id || c.routeId;
-    return itemRid ? String(itemRid).trim() === rid : false;
-  });
-  
+  var cps = checkpoints.filter(function(c){return c.routeId===rid;});
   if(!cps.length){ showToast('⚠️ ไม่มีจุดในเส้นทาง ' + rid); return; }
-  
   syncPushCheckpoints(cps, rid, function(ok){
-    if(ok) {
-      if(typeof renderRouteCpList === 'function') renderRouteCpList(rid);
-    }
+    if(ok) renderRouteCpList(rid);
   });
 }
 
@@ -1970,34 +1994,51 @@ function saveCloudUrl(url) {
   if(el) el.value = url;
 }
 
-function cloudPushCurrentRoute() {
-  var rid = document.getElementById('reEditId').value || currentRouteId;
-  if(!rid || rid === 'undefined' || String(rid).trim() === '') rid = 'R01';
-  rid = String(rid).trim();
-  
-  // 🛠️ ปรับปรุงประสิทธิภาพ: ดักจับทั้งคีย์ c.routeId และ c.route_id 
-  // เพื่อให้มั่นใจว่าระบบจะกวาดเอาพิกัดทุกจุดในเลน R02 ส่งขึ้นคลาวด์ได้ครบ 100% ไม่ตกร่อง
-  var cps = checkpoints.filter(function(c){
-    var itemRid = c.route_id || c.routeId;
-    return itemRid ? String(itemRid).trim() === rid : false;
-  });
-  
-  if(!cps.length){ showToast('⚠️ ไม่มีจุดในเส้นทาง ' + rid); return; }
-  
-  syncPushCheckpoints(cps, rid, function(ok){
-    if(ok) {
-      if(typeof renderRouteCpList === 'function') renderRouteCpList(rid);
+function syncPushCheckpoints(cps, routeId, onDone) {
+  var url = getCloudUrl();
+  if(!url){ showToast('❌ ยังไม่ได้ตั้งค่า URL'); if(onDone) onDone(false); return; }
+  // Validate routeId - ป้องกัน undefined
+  if(!routeId || routeId === 'undefined' || routeId === undefined || routeId === null || String(routeId).trim() === '') {
+    routeId = currentRouteId || 'R01';
+    if(!routeId || routeId === 'undefined') routeId = 'R01';
+    showToast('⚠️ ใช้ route_id = ' + routeId);
+  }
+  routeId = String(routeId).trim();
+  if(SYNC_LOCK){ showToast('⏳ กำลัง sync...'); return; }
+  SYNC_LOCK = true;
+  showToast('📤 กำลังอัปโหลด ' + routeId + '...');
+  fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify({ action:'saveCheckpoints', route_id:routeId, data:cps, user:cloudDriver||'admin' })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(d){
+    SYNC_LOCK = false;
+    if(d.ok || d.saved) {
+      var now = new Date().toLocaleString('th-TH');
+      localStorage.setItem('kspLastSync', now);
+      var el = document.getElementById('cloudLastSync');
+      if(el) el.textContent = 'Sync ล่าสุด: ' + now + ' (' + (d.saved||cps.length) + ' จุด)';
+      showToast('✅ อัปโหลด ' + (d.saved||cps.length) + ' จุด สำเร็จ');
+      if(onDone) onDone(true);
+    } else {
+      showToast('❌ ' + (d.error||'อัปโหลดไม่สำเร็จ'));
+      if(onDone) onDone(false);
     }
+  })
+  .catch(function(e){
+    SYNC_LOCK = false;
+    showToast('❌ ' + e.message);
+    if(onDone) onDone(false);
   });
 }
 
 function syncPullCheckpoints(routeId, onDone) {
   var url = getCloudUrl();
   if(!url){ showToast('❌ ยังไม่ได้ตั้งค่า URL'); if(onDone) onDone(null); return; }
-  showToast('📥 กำลังดึงข้อมูลจาก Cloud...');
-  
+  showToast('📥 กำลังดึงข้อมูล...');
   var targetRoute = routeId || currentRouteId || 'R01';
-  targetRoute = String(targetRoute).trim();
   
   fetch(url + '?action=getCheckpoints&route_id=' + encodeURIComponent(targetRoute))
   .then(function(r){ return r.json(); })
@@ -2009,94 +2050,59 @@ function syncPullCheckpoints(routeId, onDone) {
 
     if(rawList && rawList.length > 0) {
       var TYPE_DEFAULTS = {
-        'curve':     {col:'#E24B4A',bg:'#FCEBEB',emoji:'⚠️'},
-        'junction':  {col:'#BA7517',bg:'#FAEEDA',emoji:'✚'},
-        'merge':     {col:'#BA7517',bg:'#FAEEDA',emoji:'🔀'},
-        'narrow':    {col:'#E24B4A',bg:'#FCEBEB',emoji:'⇔'},
-        'downhill':  {col:'#E24B4A',bg:'#FCEBEB',emoji:'⛰️'},
-        'community': {col:'#993556',bg:'#FBEAF0',emoji:'🏘️'},
-        'danger':    {col:'#E24B4A',bg:'#FCEBEB',emoji:'⚠️'},
-        'warn':      {col:'#BA7517',bg:'#FAEEDA',emoji:'🚧'},
-        'start':     {col:'#1D9E75',bg:'#E1F5EE',emoji:'📍'},
-        'arrive':    {col:'#1D9E75',bg:'#E1F5EE',emoji:'✅'},
+        'curve':    {col:'#E24B4A',bg:'#FCEBEB',emoji:'⚠️'},
+        'junction': {col:'#BA7517',bg:'#FAEEDA',emoji:'✚'},
+        'merge':    {col:'#BA7517',bg:'#FAEEDA',emoji:'🔀'},
+        'narrow':   {col:'#E24B4A',bg:'#FCEBEB',emoji:'⇔'},
+        'downhill': {col:'#E24B4A',bg:'#FCEBEB',emoji:'⛰️'},
+        'community':{col:'#993556',bg:'#FBEAF0',emoji:'🏘️'},
+        'danger':   {col:'#E24B4A',bg:'#FCEBEB',emoji:'⚠️'},
+        'warn':     {col:'#BA7517',bg:'#FAEEDA',emoji:'🚧'},
+        'start':    {col:'#1D9E75',bg:'#E1F5EE',emoji:'📍'},
+        'arrive':   {col:'#1D9E75',bg:'#E1F5EE',emoji:'✅'},
       };
-      
       var mapped = rawList.map(function(cp, idx) {
-        // 1. ดักจับคีย์ประเภทป้ายความเสี่ยง
-        var t = cp.type || cp.Type || 'danger';
+        var t = cp.type || 'danger';
         var def = TYPE_DEFAULTS[t] || TYPE_DEFAULTS['danger'];
-        
-        // 2. ถอดรหัสมาตรการความปลอดภัย (Rules)
-        var processedRules = [];
-        var rawRules = cp.rules || cp.Rules || cp.rules_v;
-        if (rawRules) {
-          var rString = String(rawRules).trim();
-          if (rString.indexOf('[') === 0) {
-            try {
-              var parsed = JSON.parse(rString);
-              if (Array.isArray(parsed)) processedRules = parsed;
-            } catch(e) {
-              rString = rString.replace(/^\["|"]$/g, '').replace(/^\['|']$/g, '').replace(/^\[|]$/g, '');
-              processedRules = rString.split(',').map(function(r) { return r.trim(); });
-            }
-          } else {
-            processedRules = rString.split(',').map(function(r) { return r.trim(); });
-          }
-        }
-        processedRules = processedRules.filter(function(r) { return r !== "" && r !== "[]"; });
-
-        // 3. ตรวจสอบระบบแจ้งเตือน (Alert) ป้องกันตัวพิมพ์เล็ก-ใหญ่จากคลาวด์
-        var rawAlert = cp.alert !== undefined ? cp.alert : (cp.Alert !== undefined ? cp.Alert : 'false');
-        var alertStr = String(rawAlert).trim();
-        var isAlertActive = rawAlert === true || alertStr === 'TRUE' || alertStr === 'true';
-
-        // 4. ดักจับและทำความสะอาดรหัสเส้นทาง (Route ID) ครอบคลุมทุกรูปแบบคีย์
-        var itemRouteId = cp.route_id || cp.routeId || cp.RouteId || cp.routeId_v || targetRoute;
-        if (itemRouteId) itemRouteId = String(itemRouteId).trim();
-
-        // 5. 🛠️ จุดสำคัญ: แก้ปัญหาการดึงพิกัดหลุดช่อง ดักจับทั้งแบบย่อ (lat/lng) และแบบเต็ม (latitude/longitude)
-        var parsedLat = parseFloat(cp.lat !== undefined ? cp.lat : cp.latitude);
-        var parsedLng = parseFloat(cp.lng !== undefined ? cp.lng : cp.longitude);
-
         return {
-          id:      parseInt(cp.id !== undefined ? cp.id : cp.Id) >= 0 ? parseInt(cp.id !== undefined ? cp.id : cp.Id) : idx,
-          routeId: itemRouteId,
-          name:    cp.name || cp.Name || '',
-          km:      cp.km || cp.Km || (idx + ' กม.'),
+          id:      parseInt(cp.id) >= 0 ? parseInt(cp.id) : idx,
+          routeId: cp.routeId || cp.route_id || targetRoute,
+          name:    cp.name || '',
+          km:      cp.km || (idx + ' กม.'),
           type:    t,
-          lat:     isNaN(parsedLat) ? 0 : parsedLat,
-          lng:     isNaN(parsedLng) ? 0 : parsedLng,
-          title:   cp.title || cp.Title || cp.name || '',
-          desc:    cp.desc || cp.Desc || '',
-          speak:   cp.speak || cp.Speak || '',
-          rules:   processedRules, 
-          alert:   isAlertActive, 
-          emoji:   cp.emoji || cp.Emoji || def.emoji,
+          lat:     parseFloat(cp.lat) || 0,
+          lng:     parseFloat(cp.lng) || 0,
+          title:   cp.title || cp.name || '',
+          desc:    cp.desc || '',
+          speak:   cp.speak || '',
+          rules:   Array.isArray(cp.rules) ? cp.rules : [],
+          alert:   cp.alert === true || cp.alert === 'TRUE' || cp.alert === 'true',
+          emoji:   cp.emoji || def.emoji,
           col:     cp.col  || def.col,
           bg:      cp.bg   || def.bg,
         };
       });
 
-      // ลบจุดตรวจสอบเก่าเฉพาะเส้นทางปัจจุบันออก เพื่ออัปเดตข้อมูลชุดใหม่ที่สมบูรณ์แทนที่
-      checkpoints = checkpoints.filter(function(c){ return String(c.routeId).trim() !== targetRoute; });
+      // ลบของเก่าของ route นี้ แล้วใส่ใหม่
+      checkpoints = checkpoints.filter(function(c){ return c.routeId !== targetRoute; });
       checkpoints = checkpoints.concat(mapped);
       localStorage.setItem('kspCps', JSON.stringify(checkpoints));
 
       var now = new Date().toLocaleString('th-TH');
       var el = document.getElementById('cloudLastSync');
-      if(el) el.textContent = 'ซิงค์สำเร็จ: ' + now + ' (' + mapped.length + ' จุด)';
+      if(el) el.textContent = 'ดึงข้อมูล: ' + now + ' (' + mapped.length + ' จุด)';
       
       renderCheckpointLists();
       if(lMap) renderMapElements();
-      showToast('✅ ดึงข้อมูลแผ่นงานสำเร็จ ' + mapped.length + ' จุด');
+      showToast('✅ ดึงข้อมูล ' + mapped.length + ' จุด สำเร็จ');
       if(onDone) onDone(mapped);
     } else {
-      showToast('⚠️ ไม่พบข้อมูลจุดตรวจสอบในเส้นทางนี้บนระบบคลาวด์');
+      showToast('⚠️ ไม่พบข้อมูลจุดใน Cloud สำหรับเส้นทางนี้');
       if(onDone) onDone([]);
     }
   })
   .catch(function(e){
-    showToast('❌ ระบบตรวจพบข้อผิดพลาด: ' + e.message);
+    showToast('❌ ' + e.message);
     if(onDone) onDone(null);
   });
 }
