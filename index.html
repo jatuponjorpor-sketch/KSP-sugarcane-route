@@ -1,0 +1,2279 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#1a2332">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>KSP SafeRoute</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet-routing-machine/3.2.12/leaflet-routing-machine.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-routing-machine/3.2.12/leaflet-routing-machine.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=Prompt:wght@400;600;700&display=swap');
+
+  :root {
+    --bg-deep: #0d1520;
+    --bg-card: #1a2332;
+    --bg-panel: #1e2a3a;
+    --accent-gold: #f5a623;
+    --accent-green: #2ecc71;
+    --accent-red: #e74c3c;
+    --accent-blue: #3498db;
+    --accent-cyan: #00d4ff;
+    --text-primary: #e8f0fe;
+    --text-secondary: #8fa3b8;
+    --text-muted: #546e7a;
+    --border: #2a3f55;
+    --nav-h: 64px;
+    --radius: 12px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: 'Sarabun', sans-serif;
+    background: var(--bg-deep);
+    color: var(--text-primary);
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  /* ── TOP BAR ── */
+  #topbar {
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    z-index: 100;
+  }
+  #topbar .brand { display: flex; align-items: center; gap: 10px; }
+  #topbar .logo { width: 32px; height: 32px; background: var(--accent-gold); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+  #topbar h1 { font-family: 'Prompt', sans-serif; font-size: 16px; font-weight: 600; color: var(--accent-gold); }
+  #topbar .subtitle { font-size: 11px; color: var(--text-secondary); }
+  #gps-badge {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--bg-panel); padding: 6px 10px; border-radius: 20px;
+    font-size: 12px; border: 1px solid var(--border);
+  }
+  .gps-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted); }
+  .gps-dot.active { background: var(--accent-green); box-shadow: 0 0 6px var(--accent-green); animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* ── CONTENT ── */
+  #content { flex: 1; overflow: hidden; position: relative; }
+  .tab-pane { display: none; height: 100%; flex-direction: column; overflow: hidden; }
+  .tab-pane.active { display: flex; }
+
+  /* ── MAP ── */
+  #map { flex: 1; z-index: 1; }
+  #map-controls {
+    position: absolute; top: 10px; right: 10px; z-index: 500;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .map-btn {
+    background: var(--bg-card); border: 1px solid var(--border);
+    color: var(--text-primary); border-radius: 8px;
+    padding: 8px 12px; font-size: 13px; font-family: 'Sarabun', sans-serif;
+    cursor: pointer; white-space: nowrap;
+    transition: all 0.2s;
+  }
+  .map-btn:hover { background: var(--bg-panel); border-color: var(--accent-cyan); }
+  .map-btn.active { background: var(--accent-blue); border-color: var(--accent-blue); color: #fff; }
+
+  #route-info-bar {
+    position: absolute; bottom: 0; left: 0; right: 0; z-index: 400;
+    background: linear-gradient(transparent, var(--bg-deep)ee);
+    padding: 12px 16px 8px;
+  }
+  #route-info-card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 12px 16px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .route-stat { text-align: center; }
+  .route-stat .val { font-family: 'Prompt', sans-serif; font-size: 20px; font-weight: 700; color: var(--accent-gold); }
+  .route-stat .lbl { font-size: 11px; color: var(--text-secondary); }
+  #sim-btn {
+    background: var(--accent-green); color: #fff; border: none;
+    border-radius: 8px; padding: 10px 18px; font-size: 14px;
+    font-family: 'Sarabun', sans-serif; font-weight: 600;
+    cursor: pointer; transition: all 0.2s;
+  }
+  #sim-btn:hover { filter: brightness(1.1); }
+  #sim-btn.running { background: var(--accent-red); }
+  .speed-btn {
+    background: var(--bg-panel); color: var(--text-secondary);
+    border: 1px solid var(--border); border-radius: 6px;
+    padding: 3px 8px; font-size: 12px; font-family: 'Prompt', sans-serif;
+    font-weight: 600; cursor: pointer; transition: all 0.15s;
+  }
+  .speed-btn:hover { border-color: var(--accent-gold); color: var(--text-primary); }
+  .speed-btn.active { background: var(--accent-gold); color: var(--bg-deep); border-color: var(--accent-gold); }
+
+  /* ── ROUTE TAB ── */
+  #tab-route { overflow-y: auto; padding: 16px; gap: 12px; }
+  .section-title {
+    font-family: 'Prompt', sans-serif; font-size: 13px; font-weight: 600;
+    color: var(--accent-gold); text-transform: uppercase; letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+  .route-card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px 16px;
+    cursor: pointer; transition: all 0.2s; margin-bottom: 8px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .route-card:hover { border-color: var(--accent-cyan); }
+  .route-card.selected { border-color: var(--accent-gold); background: #1a2f1a; }
+  .route-num {
+    width: 36px; height: 36px; border-radius: 8px;
+    background: var(--bg-panel); display: flex; align-items: center; justify-content: center;
+    font-family: 'Prompt', sans-serif; font-weight: 700; font-size: 14px;
+    color: var(--accent-gold); flex-shrink: 0; border: 1px solid var(--border);
+  }
+  .route-card.selected .route-num { background: var(--accent-gold); color: var(--bg-deep); border-color: var(--accent-gold); }
+  .route-meta { flex: 1; min-width: 0; }
+  .route-name { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .route-desc { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+  .route-badge { font-size: 11px; background: var(--bg-panel); padding: 3px 8px; border-radius: 20px; color: var(--text-secondary); white-space: nowrap; }
+
+  /* search bar */
+  .search-bar {
+    display: flex; gap: 8px; margin-bottom: 12px; align-items: center;
+  }
+  .search-input {
+    flex: 1; background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: 8px; padding: 9px 12px; color: var(--text-primary);
+    font-size: 14px; font-family: 'Sarabun', sans-serif; outline: none;
+  }
+  .search-input:focus { border-color: var(--accent-gold); }
+  .route-count { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; }
+  .empty-state { text-align: center; color: var(--text-muted); font-size: 14px; padding: 40px 0; }
+
+  /* ── LOG TAB ── */
+  #tab-log { overflow-y: auto; padding: 16px; }
+  .log-entry {
+    background: var(--bg-card); border-left: 3px solid var(--border);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 10px 14px; margin-bottom: 8px;
+  }
+  .log-entry.warn { border-color: var(--accent-gold); }
+  .log-entry.alert { border-color: var(--accent-red); }
+  .log-entry .log-time { font-size: 11px; color: var(--text-secondary); }
+  .log-entry .log-msg { font-size: 14px; margin-top: 2px; }
+
+  /* ── SOUND TAB ── */
+  #tab-sound { overflow-y: auto; padding: 16px; gap: 12px; }
+  .sound-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; }
+  .toggle-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .toggle-label { font-size: 15px; font-weight: 500; }
+  .toggle { position: relative; width: 48px; height: 26px; }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider {
+    position: absolute; inset: 0; background: var(--bg-panel);
+    border-radius: 13px; cursor: pointer; transition: 0.3s;
+    border: 1px solid var(--border);
+  }
+  .toggle-slider:before {
+    content: ''; position: absolute; width: 20px; height: 20px;
+    left: 3px; top: 2px; background: var(--text-secondary);
+    border-radius: 50%; transition: 0.3s;
+  }
+  .toggle input:checked + .toggle-slider { background: var(--accent-green); border-color: var(--accent-green); }
+  .toggle input:checked + .toggle-slider:before { transform: translateX(22px); background: #fff; }
+  .range-row { display: flex; align-items: center; gap: 10px; }
+  .range-row label { font-size: 13px; color: var(--text-secondary); width: 100px; }
+  input[type=range] { flex: 1; accent-color: var(--accent-gold); }
+  .range-val { font-size: 13px; font-weight: 600; color: var(--accent-gold); width: 40px; text-align: right; }
+
+  /* ── ADMIN TAB ── */
+  #tab-admin { overflow-y: auto; padding: 16px; }
+  #pin-gate { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 16px; }
+  #pin-gate h2 { font-family: 'Prompt', sans-serif; font-size: 20px; color: var(--accent-gold); }
+  #pin-gate p { font-size: 14px; color: var(--text-secondary); }
+  .pin-input {
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 12px 16px;
+    font-size: 24px; letter-spacing: 8px; text-align: center;
+    color: var(--text-primary); width: 180px; font-family: 'Prompt', sans-serif;
+    outline: none;
+  }
+  .pin-input:focus { border-color: var(--accent-gold); }
+  .btn-primary {
+    background: var(--accent-gold); color: var(--bg-deep); border: none;
+    border-radius: var(--radius); padding: 12px 28px; font-size: 15px;
+    font-family: 'Sarabun', sans-serif; font-weight: 700; cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-primary:hover { filter: brightness(1.1); }
+  .btn-secondary {
+    background: var(--bg-panel); color: var(--text-primary); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 10px 20px; font-size: 14px;
+    font-family: 'Sarabun', sans-serif; cursor: pointer; transition: all 0.2s;
+  }
+  .btn-secondary:hover { border-color: var(--accent-cyan); }
+  .btn-danger {
+    background: var(--accent-red); color: #fff; border: none;
+    border-radius: var(--radius); padding: 10px 20px; font-size: 14px;
+    font-family: 'Sarabun', sans-serif; cursor: pointer;
+  }
+
+  #admin-content { display: none; }
+  #admin-content.visible { display: block; }
+
+  .admin-section { margin-bottom: 20px; }
+  .form-group { margin-bottom: 12px; }
+  .form-label { font-size: 13px; color: var(--text-secondary); margin-bottom: 4px; display: block; }
+  .form-input {
+    width: 100%; background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 12px; color: var(--text-primary);
+    font-size: 14px; font-family: 'Sarabun', sans-serif; outline: none;
+  }
+  .form-input:focus { border-color: var(--accent-gold); }
+  select.form-input option { background: var(--bg-panel); }
+
+  .checkpoint-item {
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 12px; margin-bottom: 8px;
+    display: flex; align-items: flex-start; gap: 10px;
+  }
+  .cp-num { width: 24px; height: 24px; border-radius: 50%; background: var(--accent-blue); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; margin-top: 2px; }
+  .cp-info { flex: 1; }
+  .cp-name { font-size: 14px; font-weight: 500; }
+  .cp-coords { font-size: 11px; color: var(--text-secondary); margin-top: 2px; font-family: monospace; }
+  .cp-sign { font-size: 11px; color: var(--accent-gold); margin-top: 2px; }
+  .cp-del { background: none; border: none; color: var(--accent-red); font-size: 18px; cursor: pointer; padding: 0 4px; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .chip {
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: 20px; padding: 6px 14px; font-size: 13px; cursor: pointer;
+    transition: all 0.2s;
+  }
+  .chip:hover, .chip.selected { background: var(--accent-gold); color: var(--bg-deep); border-color: var(--accent-gold); }
+
+  .sync-row { display: flex; gap: 8px; }
+  .sync-row .form-input { flex: 1; }
+
+  /* ── BOTTOM NAV ── */
+  #bottom-nav {
+    background: var(--bg-card); border-top: 1px solid var(--border);
+    display: flex; height: var(--nav-h); flex-shrink: 0;
+  }
+  .nav-item {
+    flex: 1; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 3px; cursor: pointer;
+    transition: all 0.2s; border: none; background: none;
+    color: var(--text-muted); padding: 0;
+  }
+  .nav-item:hover { color: var(--text-secondary); }
+  .nav-item.active { color: var(--accent-gold); }
+  .nav-icon { font-size: 22px; line-height: 1; }
+  .nav-label { font-size: 10px; font-family: 'Sarabun', sans-serif; }
+
+  /* ── ALERT POPUP ── */
+  #alert-popup {
+    position: fixed; top: 80px; left: 50%; transform: translateX(-50%);
+    z-index: 2000; min-width: 300px; max-width: 90vw;
+    background: var(--bg-card); border: 2px solid var(--accent-red);
+    border-radius: var(--radius); padding: 16px 20px;
+    box-shadow: 0 8px 32px #000a, 0 0 0 1px var(--accent-red)44;
+    display: none; animation: slideDown 0.3s ease;
+  }
+  #alert-popup.show { display: flex; gap: 14px; align-items: flex-start; }
+  @keyframes slideDown { from{transform:translateX(-50%) translateY(-20px);opacity:0} to{transform:translateX(-50%) translateY(0);opacity:1} }
+  #alert-sign { flex-shrink: 0; }
+  #alert-body { flex: 1; }
+  #alert-title { font-family: 'Prompt', sans-serif; font-size: 16px; font-weight: 700; color: var(--accent-red); }
+  #alert-msg { font-size: 14px; color: var(--text-primary); margin-top: 4px; }
+  #alert-dist { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+  #alert-close { background: none; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer; flex-shrink: 0; }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 20px; padding: 8px 16px; font-size: 13px;
+    z-index: 3000; opacity: 0; pointer-events: none;
+    transition: opacity 0.3s; white-space: nowrap;
+  }
+  #toast.show { opacity: 1; }
+
+  /* ── OSRM ROUTE LINE ── */
+  .leaflet-pane .osrm-line { stroke-dasharray: none; }
+
+  /* ── LOADING OVERLAY ── */
+  #loading {
+    position: fixed; inset: 0; background: var(--bg-deep)cc;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    z-index: 9999; gap: 16px; display: none;
+  }
+  #loading.show { display: flex; }
+  .spinner {
+    width: 40px; height: 40px; border: 3px solid var(--border);
+    border-top-color: var(--accent-gold); border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── SIGN MANAGER ── */
+  .sign-method-btn {
+    flex:1; background:var(--bg-panel); border:1px solid var(--border);
+    border-radius:8px; padding:9px; font-size:13px; font-family:'Sarabun',sans-serif;
+    cursor:pointer; color:var(--text-secondary); transition:all 0.2s;
+  }
+  .sign-method-btn.active { background:var(--accent-blue); color:#fff; border-color:var(--accent-blue); }
+  .shape-btn {
+    background:var(--bg-panel); border:1px solid var(--border);
+    border-radius:8px; padding:7px 12px; font-size:13px; font-family:'Sarabun',sans-serif;
+    cursor:pointer; color:var(--text-secondary); transition:all 0.2s;
+  }
+  .shape-btn.active { background:var(--accent-gold); color:var(--bg-deep); border-color:var(--accent-gold); }
+  .color-swatch {
+    width:32px; height:32px; border-radius:6px; cursor:pointer;
+    border:2px solid transparent; transition:all 0.15s; flex-shrink:0;
+  }
+  .color-swatch:hover, .color-swatch.active { border-color:var(--accent-cyan); transform:scale(1.15); }
+  .sign-grid-item {
+    background:var(--bg-panel); border:1px solid var(--border);
+    border-radius:10px; padding:10px; display:flex; flex-direction:column;
+    align-items:center; gap:6px; position:relative; min-width:80px;
+  }
+  .sign-grid-item .sign-del {
+    position:absolute; top:4px; right:4px; background:none; border:none;
+    color:var(--accent-red); font-size:14px; cursor:pointer; opacity:0.7;
+    line-height:1; padding:2px;
+  }
+  .sign-grid-item .sign-del:hover { opacity:1; }
+  .sign-grid-item .sign-lbl { font-size:11px; font-weight:600; color:var(--text-secondary); text-align:center; }
+  .sign-grid-item.builtin .sign-del { display:none; }
+  #upload-dropzone:hover { border-color:var(--accent-cyan); background:var(--bg-panel); }
+  .leaflet-routing-container { display: none !important; }
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* ── SIGN SVG ── */
+  .sign-svg { display: block; }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div id="topbar">
+  <div class="brand">
+    <div class="logo">🌾</div>
+    <div>
+      <h1>KSP SafeRoute</h1>
+      <div class="subtitle">น้ำตาลเกษตรผล • ระบบนำทางปลอดภัย</div>
+    </div>
+  </div>
+  <div id="gps-badge">
+    <div class="gps-dot" id="gps-dot"></div>
+    <span id="gps-label">GPS</span>
+  </div>
+</div>
+
+<!-- CONTENT -->
+<div id="content">
+
+  <!-- TAB: MAP -->
+  <div class="tab-pane active" id="tab-map">
+    <div id="map"></div>
+    <div id="map-controls">
+      <button class="map-btn" id="btn-center">📍 ตำแหน่งฉัน</button>
+      <button class="map-btn" id="btn-fit">🗺️ ดูเส้นทาง</button>
+      <button class="map-btn" id="btn-reload-route" onclick="reloadRoute()" style="border-color:var(--accent-green);color:var(--accent-green);">
+        ☁️ อัปเดตจาก Cloud
+      </button>
+      <div id="last-sync-badge" style="display:none;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:4px 10px;font-size:11px;color:var(--text-secondary);text-align:center;"></div>
+    </div>
+    <div id="route-info-bar">
+      <div id="route-info-card">
+        <div class="route-stat">
+          <div class="val" id="stat-route">-</div>
+          <div class="lbl">เส้นทาง</div>
+        </div>
+        <div class="route-stat">
+          <div class="val" id="stat-dist">-</div>
+          <div class="lbl">กม.</div>
+        </div>
+        <div class="route-stat">
+          <div class="val" id="stat-cp">-</div>
+          <div class="lbl">จุดตรวจ</div>
+        </div>
+        <div class="route-stat">
+          <div class="val" id="stat-speed">0</div>
+          <div class="lbl">กม/ชม</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;">
+          <button id="sim-btn" onclick="toggleSimulation()">▶ จำลอง</button>
+          <div id="speed-btns" style="display:none;gap:4px;display:none;">
+            <button class="speed-btn active" onclick="setSimSpeed(1)" id="spd-1">1×</button>
+            <button class="speed-btn" onclick="setSimSpeed(3)" id="spd-3">3×</button>
+            <button class="speed-btn" onclick="setSimSpeed(5)" id="spd-5">5×</button>
+            <button class="speed-btn" onclick="setSimSpeed(10)" id="spd-10">10×</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: ROUTE -->
+  <div class="tab-pane" id="tab-route">
+    <div class="search-bar">
+      <input type="search" class="search-input" id="route-search" placeholder="🔍 ค้นหาชื่อเส้นทาง..." oninput="renderRouteList()">
+      <button class="btn-primary" style="padding:9px 14px;font-size:13px;white-space:nowrap;" onclick="showNewRouteModal()">+ สร้างใหม่</button>
+    </div>
+    <div class="route-count" id="route-count"></div>
+    <div id="route-list"></div>
+
+    <!-- NEW ROUTE MODAL -->
+    <div id="new-route-modal" style="display:none;position:fixed;inset:0;background:#000a;z-index:4000;align-items:center;justify-content:center;">
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:24px;width:90%;max-width:380px;">
+        <div class="section-title" style="margin-bottom:16px;">➕ สร้างเส้นทางใหม่</div>
+        <div class="form-group">
+          <label class="form-label">ชื่อเส้นทาง *</label>
+          <input type="text" class="form-input" id="new-route-name" placeholder="เช่น ศูนย์ประจักษ์ → โรงงาน">
+        </div>
+        <div class="form-group">
+          <label class="form-label">คำอธิบาย</label>
+          <input type="text" class="form-input" id="new-route-desc" placeholder="เช่น ผ่านทางหลวง 210">
+        </div>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button class="btn-primary" onclick="createNewRoute()" style="flex:1;">สร้างเส้นทาง</button>
+          <button class="btn-secondary" onclick="hideNewRouteModal()" style="flex:1;">ยกเลิก</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- DELETE CONFIRM MODAL -->
+    <div id="delete-route-modal" style="display:none;position:fixed;inset:0;background:#000c;z-index:4001;align-items:center;justify-content:center;">
+      <div style="background:var(--bg-card);border:2px solid var(--accent-red);border-radius:var(--radius);padding:24px;width:90%;max-width:360px;text-align:center;">
+        <div style="font-size:40px;margin-bottom:12px;">🗑️</div>
+        <div style="font-family:'Prompt',sans-serif;font-size:16px;font-weight:700;color:var(--accent-red);margin-bottom:8px;">ยืนยันการลบ</div>
+        <div id="delete-route-name" style="font-size:15px;font-weight:600;margin-bottom:6px;color:var(--text-primary);"></div>
+        <div style="font-size:13px;color:var(--text-secondary);margin-bottom:20px;">จุดตรวจสอบทั้งหมดในเส้นทางนี้จะถูกลบด้วย</div>
+        <div style="display:flex;gap:10px;">
+          <button class="btn-danger" onclick="confirmDeleteRoute()" style="flex:1;padding:12px;">ลบเส้นทาง</button>
+          <button class="btn-secondary" onclick="cancelDeleteRoute()" style="flex:1;padding:12px;">ยกเลิก</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: LOG -->
+  <div class="tab-pane" id="tab-log">
+    <div class="section-title">บันทึกการแจ้งเตือน</div>
+    <div id="log-list"><div style="color:var(--text-muted);font-size:14px;text-align:center;padding:40px 0;">ยังไม่มีบันทึก</div></div>
+  </div>
+
+  <!-- TAB: SOUND -->
+  <div class="tab-pane" id="tab-sound" style="padding:16px;">
+    <div class="section-title">ตั้งค่าเสียง</div>
+    <div class="sound-card">
+      <div class="toggle-row">
+        <span class="toggle-label">🔊 เสียงแจ้งเตือน TTS</span>
+        <label class="toggle"><input type="checkbox" id="tts-toggle" checked onchange="saveSoundSettings()"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="toggle-row">
+        <span class="toggle-label">🔔 เสียง Beep</span>
+        <label class="toggle"><input type="checkbox" id="beep-toggle" checked onchange="saveSoundSettings()"><span class="toggle-slider"></span></label>
+      </div>
+    </div>
+    <div class="sound-card">
+      <div class="range-row" style="margin-bottom:14px;">
+        <label>ระยะแจ้งเตือน</label>
+        <input type="range" id="alert-range" min="50" max="500" value="150" step="10" oninput="document.getElementById('range-val-alert').textContent=this.value+'ม.';saveSoundSettings()">
+        <span class="range-val" id="range-val-alert">150ม.</span>
+      </div>
+      <div class="range-row">
+        <label>ระดับเสียง</label>
+        <input type="range" id="vol-range" min="0" max="1" value="0.8" step="0.1" oninput="document.getElementById('range-val-vol').textContent=Math.round(this.value*100)+'%';saveSoundSettings()">
+        <span class="range-val" id="range-val-vol">80%</span>
+      </div>
+    </div>
+    <div class="sound-card">
+      <div class="section-title" style="margin-bottom:10px;">ทดสอบเสียง</div>
+      <button class="btn-primary" onclick="testTTS()" style="width:100%;margin-bottom:8px;">🔊 ทดสอบ TTS</button>
+      <button class="btn-secondary" onclick="testBeep()" style="width:100%;">🔔 ทดสอบ Beep</button>
+    </div>
+  </div>
+
+  <!-- TAB: ADMIN -->
+  <div class="tab-pane" id="tab-admin">
+    <div id="pin-gate">
+      <div style="font-size:48px;">🔐</div>
+      <h2>พื้นที่ผู้ดูแล</h2>
+      <p>กรอก PIN เพื่อเข้าสู่ระบบจัดการ</p>
+      <input type="password" class="pin-input" id="pin-input" maxlength="6" placeholder="••••" inputmode="numeric">
+      <button class="btn-primary" onclick="checkPin()">เข้าสู่ระบบ</button>
+      <p id="pin-error" style="color:var(--accent-red);font-size:13px;display:none;">PIN ไม่ถูกต้อง</p>
+    </div>
+
+    <div id="admin-content">
+
+      <!-- ── ป้ายจราจร ── -->
+      <div class="admin-section">
+        <div class="section-title">🚧 จัดการป้ายจราจร
+          <button class="btn-secondary" style="float:right;padding:4px 10px;font-size:12px;" onclick="showSignManager()">⚙ จัดการป้าย</button>
+        </div>
+        <div id="sign-preview-grid" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;"></div>
+      </div>
+
+      <div class="admin-section">
+        <div class="section-title">จัดการเส้นทาง</div>
+        <div class="form-group">
+          <label class="form-label">เส้นทาง</label>
+          <select class="form-input" id="admin-route-sel" onchange="loadAdminRoute()"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">ชื่อเส้นทาง</label>
+          <input type="text" class="form-input" id="admin-route-name" placeholder="เช่น ศูนย์ประจักษ์ → โรงงาน">
+        </div>
+        <div class="form-group">
+          <label class="form-label">คำอธิบาย</label>
+          <input type="text" class="form-input" id="admin-route-desc" placeholder="เช่น ผ่านทางหลวง 210">
+        </div>
+      </div>
+
+      <div class="admin-section">
+        <div class="section-title">จุดตรวจสอบ <button class="btn-secondary" style="float:right;padding:4px 10px;font-size:12px;" onclick="showAddCP()">+ เพิ่ม</button></div>
+        <div id="cp-list"></div>
+      </div>
+
+      <div id="add-cp-form" style="display:none;" class="sound-card">
+        <div class="section-title" style="margin-bottom:10px;" id="cp-form-title">เพิ่มจุดตรวจสอบ</div>
+        <div class="form-group">
+          <label class="form-label">ชื่อจุด</label>
+          <input type="text" class="form-input" id="cp-name" placeholder="เช่น สี่แยกบ้านดอน">
+        </div>
+        <div class="form-group">
+          <label class="form-label">ละติจูด, ลองติจูด</label>
+          <div style="display:flex;gap:8px;">
+            <input type="number" class="form-input" id="cp-lat" placeholder="17.xxxxx" step="0.00001">
+            <input type="number" class="form-input" id="cp-lng" placeholder="102.xxxxx" step="0.00001">
+          </div>
+        </div>
+        <div class="form-group">
+          <button class="btn-secondary" style="width:100%;margin-bottom:8px;" onclick="useCurrentGPS()">📍 ใช้ GPS ปัจจุบัน</button>
+        </div>
+        <div class="form-group">
+          <label class="form-label">ป้ายจราจร</label>
+          <div class="chips" id="sign-chips"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">ข้อความแจ้งเตือน</label>
+          <input type="text" class="form-input" id="cp-msg" placeholder="เช่น ระวัง! ทางแคบข้างหน้า">
+        </div>
+        <div class="form-group">
+          <label class="form-label">ระยะแจ้งเตือนก่อนถึงจุด (เมตร)</label>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input type="number" class="form-input" id="cp-alert-range" placeholder="เช่น 150" min="50" max="2000" step="10" style="flex:1;">
+            <span style="font-size:13px;color:var(--text-secondary);white-space:nowrap;">ม. (ค่าเริ่มต้น 150)</span>
+          </div>
+          <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">
+            <button class="chip" onclick="document.getElementById('cp-alert-range').value=100" style="padding:4px 10px;font-size:12px;">100ม.</button>
+            <button class="chip" onclick="document.getElementById('cp-alert-range').value=150" style="padding:4px 10px;font-size:12px;">150ม.</button>
+            <button class="chip" onclick="document.getElementById('cp-alert-range').value=200" style="padding:4px 10px;font-size:12px;">200ม.</button>
+            <button class="chip" onclick="document.getElementById('cp-alert-range').value=300" style="padding:4px 10px;font-size:12px;">300ม.</button>
+            <button class="chip" onclick="document.getElementById('cp-alert-range').value=500" style="padding:4px 10px;font-size:12px;">500ม.</button>
+          </div>
+        </div>
+        <input type="hidden" id="cp-edit-id">
+        <div style="display:flex;gap:8px;">
+          <button class="btn-primary" id="cp-save-btn" onclick="saveCheckpoint()" style="flex:1;">บันทึก</button>
+          <button class="btn-secondary" onclick="hideAddCP()" style="flex:1;">ยกเลิก</button>
+        </div>
+      </div>
+
+      <div class="admin-section" style="margin-top:16px;">
+        <div class="section-title">Google Sheets Sync</div>
+        <div class="form-group">
+          <label class="form-label">Apps Script URL</label>
+          <div class="sync-row">
+            <input type="text" class="form-input" id="sheets-url" placeholder="https://script.google.com/macros/s/...">
+            <button class="btn-primary" onclick="saveSheetUrl()">บันทึก</button>
+          </div>
+        </div>
+        <div class="toggle-row" style="margin-bottom:10px;">
+          <span class="toggle-label" style="font-size:14px;">⚡ Sync อัตโนมัติ</span>
+          <label class="toggle"><input type="checkbox" id="auto-sync-toggle" onchange="toggleAutoSync()"><span class="toggle-slider"></span></label>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button class="btn-secondary" onclick="syncToSheets()" style="flex:1;">⬆ อัปโหลด</button>
+          <button class="btn-secondary" onclick="syncFromSheets()" style="flex:1;">⬇ ดาวน์โหลด</button>
+        </div>
+        <div id="sync-status" style="font-size:12px;color:var(--text-secondary);margin-top:8px;text-align:center;"></div>
+      </div>
+
+      <div class="admin-section">
+        <button class="btn-primary" onclick="saveRoute()" style="width:100%;margin-bottom:8px;">💾 บันทึกเส้นทาง</button>
+        <button class="btn-secondary" onclick="adminLogout()" style="width:100%;">🔒 ออกจากระบบ</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       SIGN MANAGER MODAL
+  ══════════════════════════════════════ -->
+  <div id="sign-manager-modal" style="display:none;position:fixed;inset:0;background:#000c;z-index:5000;flex-direction:column;overflow:hidden;">
+    <div style="background:var(--bg-card);border-bottom:1px solid var(--border);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+      <div style="font-family:'Prompt',sans-serif;font-size:16px;font-weight:700;color:var(--accent-gold);">🚧 จัดการป้ายจราจร</div>
+      <button onclick="hideSignManager()" style="background:none;border:none;color:var(--text-secondary);font-size:22px;cursor:pointer;">✕</button>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:16px;">
+
+      <!-- ── เพิ่มป้ายใหม่ ── -->
+      <div class="sound-card" style="margin-bottom:16px;">
+        <div class="section-title" style="margin-bottom:12px;">➕ เพิ่มป้ายใหม่</div>
+
+        <!-- ชื่อป้าย -->
+        <div class="form-group">
+          <label class="form-label">ชื่อป้าย / รหัส *</label>
+          <input type="text" class="form-input" id="ns-id" placeholder="เช่น ต.๑๐ หรือ ป้ายโรงงาน">
+        </div>
+        <div class="form-group">
+          <label class="form-label">คำอธิบาย (TTS จะอ่านคำนี้)</label>
+          <input type="text" class="form-input" id="ns-name" placeholder="เช่น ระวังทางลื่น">
+        </div>
+
+        <!-- วิธีสร้าง -->
+        <div class="form-group">
+          <label class="form-label">วิธีสร้างป้าย</label>
+          <div style="display:flex;gap:8px;margin-bottom:10px;">
+            <button class="sign-method-btn active" id="method-draw" onclick="setSignMethod('draw')">🎨 วาดเอง</button>
+            <button class="sign-method-btn" id="method-upload" onclick="setSignMethod('upload')">📷 อัปโหลดรูป</button>
+          </div>
+        </div>
+
+        <!-- DRAW MODE -->
+        <div id="sign-draw-panel">
+          <div class="form-group">
+            <label class="form-label">รูปทรงป้าย</label>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;">
+              <button class="shape-btn active" id="shape-diamond" onclick="setShape('diamond')">◆ เพชร</button>
+              <button class="shape-btn" id="shape-circle" onclick="setShape('circle')">● วงกลม</button>
+              <button class="shape-btn" id="shape-rect" onclick="setShape('rect')">■ สี่เหลี่ยม</button>
+              <button class="shape-btn" id="shape-octagon" onclick="setShape('octagon')">⬡ แปดเหลี่ยม</button>
+              <button class="shape-btn" id="shape-triangle" onclick="setShape('triangle')">▲ สามเหลี่ยม</button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">สีพื้นหลัง</label>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <div class="color-swatch" style="background:#FFCC00;" onclick="setSignColor('#FFCC00')"></div>
+              <div class="color-swatch" style="background:#e74c3c;" onclick="setSignColor('#e74c3c')"></div>
+              <div class="color-swatch" style="background:#ffffff;border:1px solid #555;" onclick="setSignColor('#ffffff')"></div>
+              <div class="color-swatch" style="background:#2ecc71;" onclick="setSignColor('#2ecc71')"></div>
+              <div class="color-swatch" style="background:#3498db;" onclick="setSignColor('#3498db')"></div>
+              <div class="color-swatch" style="background:#ff6b35;" onclick="setSignColor('#ff6b35')"></div>
+              <input type="color" id="ns-color-picker" value="#FFCC00" onchange="setSignColor(this.value)" style="width:36px;height:36px;border:none;border-radius:6px;cursor:pointer;background:none;padding:0;">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">ข้อความบนป้าย</label>
+            <input type="text" class="form-input" id="ns-text" placeholder="เช่น 30 หรือ STOP" maxlength="6" oninput="updateSignPreview()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">สีข้อความ</label>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <div class="color-swatch" style="background:#1a1a1a;" onclick="setTextColor('#1a1a1a')"></div>
+              <div class="color-swatch" style="background:#ffffff;border:1px solid #555;" onclick="setTextColor('#ffffff')"></div>
+              <div class="color-swatch" style="background:#e74c3c;" onclick="setTextColor('#e74c3c')"></div>
+              <input type="color" id="ns-textcolor-picker" value="#1a1a1a" onchange="setTextColor(this.value)" style="width:36px;height:36px;border:none;border-radius:6px;cursor:pointer;background:none;padding:0;">
+            </div>
+          </div>
+        </div>
+
+        <!-- UPLOAD MODE -->
+        <div id="sign-upload-panel" style="display:none;">
+          <div class="form-group">
+            <label class="form-label">อัปโหลดรูปป้าย (jpg, png, svg)</label>
+            <div id="upload-dropzone" onclick="document.getElementById('sign-file-input').click()"
+              style="border:2px dashed var(--border);border-radius:10px;padding:30px;text-align:center;cursor:pointer;transition:all 0.2s;">
+              <div style="font-size:36px;margin-bottom:8px;">📷</div>
+              <div style="font-size:14px;color:var(--text-secondary);">แตะเพื่อเลือกรูปภาพ</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">JPG, PNG, SVG (ไม่เกิน 2MB)</div>
+            </div>
+            <input type="file" id="sign-file-input" accept="image/*" style="display:none;" onchange="handleSignUpload(event)">
+          </div>
+          <div id="upload-preview-wrap" style="display:none;text-align:center;margin-top:8px;">
+            <img id="upload-preview-img" style="max-width:100px;max-height:100px;border-radius:8px;border:2px solid var(--border);">
+          </div>
+        </div>
+
+        <!-- PREVIEW -->
+        <div class="form-group" style="margin-top:14px;">
+          <label class="form-label">ตัวอย่างป้าย</label>
+          <div style="display:flex;align-items:center;gap:16px;background:var(--bg-panel);border-radius:10px;padding:14px;">
+            <div id="ns-preview" style="flex-shrink:0;"></div>
+            <div>
+              <div id="ns-preview-label" style="font-size:14px;font-weight:600;color:var(--text-primary);">ป้ายใหม่</div>
+              <div id="ns-preview-name" style="font-size:12px;color:var(--text-secondary);margin-top:2px;">คำอธิบาย</div>
+            </div>
+          </div>
+        </div>
+
+        <button class="btn-primary" onclick="saveCustomSign()" style="width:100%;margin-top:8px;">💾 บันทึกป้าย</button>
+      </div>
+
+      <!-- ── ป้ายที่มีอยู่ ── -->
+      <div class="section-title" style="margin-bottom:10px;">ป้ายทั้งหมด</div>
+      <div id="all-signs-grid"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- BOTTOM NAV -->
+<nav id="bottom-nav">
+  <button class="nav-item" onclick="switchTab('map')" id="nav-map">
+    <span class="nav-icon">🗺️</span>
+    <span class="nav-label">แผนที่</span>
+  </button>
+  <button class="nav-item" onclick="switchTab('route')" id="nav-route">
+    <span class="nav-icon">🛣️</span>
+    <span class="nav-label">เส้นทาง</span>
+  </button>
+  <button class="nav-item" onclick="switchTab('log')" id="nav-log">
+    <span class="nav-icon">📋</span>
+    <span class="nav-label">บันทึก</span>
+  </button>
+  <button class="nav-item" onclick="switchTab('sound')" id="nav-sound">
+    <span class="nav-icon">🔊</span>
+    <span class="nav-label">เสียง</span>
+  </button>
+  <button class="nav-item" onclick="switchTab('admin')" id="nav-admin">
+    <span class="nav-icon">⚙️</span>
+    <span class="nav-label">จัดการ</span>
+  </button>
+</nav>
+
+<!-- ALERT POPUP -->
+<div id="alert-popup">
+  <div id="alert-sign"></div>
+  <div id="alert-body">
+    <div id="alert-title">⚠️ แจ้งเตือน</div>
+    <div id="alert-msg"></div>
+    <div id="alert-dist"></div>
+  </div>
+  <button id="alert-close" onclick="closeAlert()">✕</button>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- LOADING -->
+<div id="loading">
+  <div class="spinner"></div>
+  <div style="font-size:14px;color:var(--text-secondary);" id="loading-msg">กำลังโหลด...</div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// DATA STRUCTURES
+// ═══════════════════════════════════════════════════════════
+
+const SIGN_TYPES = [
+  { id:'ต.๑',   label:'ต.๑',   name:'ทางแคบ',           color:'#FFCC00', arrow:'narrow' },
+  { id:'ต.๑๑',  label:'ต.๑๑',  name:'ทางโค้งซ้าย',      color:'#FFCC00', arrow:'curve-l' },
+  { id:'ต.๑๓',  label:'ต.๑๓',  name:'ทางโค้งขวา',       color:'#FFCC00', arrow:'curve-r' },
+  { id:'ต.๒๒',  label:'ต.๒๒',  name:'ทางรถไฟ',          color:'#FFCC00', arrow:'train' },
+  { id:'ต.๓๒',  label:'ต.๓๒',  name:'ให้ทาง',           color:'#fff',    arrow:'yield' },
+  { id:'ต.๓๔',  label:'ต.๓๔',  name:'หยุด',             color:'#e74c3c', arrow:'stop' },
+  { id:'ต.๕๓',  label:'ต.๕๓',  name:'ความเร็ว 30',      color:'#fff',    arrow:'speed' },
+  { id:'custom', label:'⚠️',   name:'ระวัง!',           color:'#FFCC00', arrow:'warn' },
+];
+
+// ── CUSTOM SIGNS (user-created, stored in localStorage) ──
+let customSigns = loadData('ksp_custom_signs') || [];
+function saveCustomSigns() { saveData('ksp_custom_signs', customSigns); }
+function allSigns() { return [...SIGN_TYPES, ...customSigns]; }
+
+// Sign manager state
+let nsMethod = 'draw';
+let nsShape  = 'diamond';
+let nsColor  = '#FFCC00';
+let nsTextColor = '#1a1a1a';
+let nsUploadDataUrl = null;
+
+function showSignManager() {
+  document.getElementById('sign-manager-modal').style.display = 'flex';
+  renderAllSignsGrid();
+  updateSignPreview();
+  renderSignPreviewGrid();
+}
+function hideSignManager() {
+  document.getElementById('sign-manager-modal').style.display = 'none';
+}
+
+function setSignMethod(m) {
+  nsMethod = m;
+  document.getElementById('sign-draw-panel').style.display   = m==='draw'   ? 'block' : 'none';
+  document.getElementById('sign-upload-panel').style.display = m==='upload' ? 'block' : 'none';
+  document.getElementById('method-draw').classList.toggle('active',   m==='draw');
+  document.getElementById('method-upload').classList.toggle('active', m==='upload');
+  updateSignPreview();
+}
+
+function setShape(s) {
+  nsShape = s;
+  ['diamond','circle','rect','octagon','triangle'].forEach(x =>
+    document.getElementById('shape-'+x)?.classList.toggle('active', x===s));
+  updateSignPreview();
+}
+
+function setSignColor(c) {
+  nsColor = c;
+  document.getElementById('ns-color-picker').value = c;
+  document.querySelectorAll('#sign-draw-panel .color-swatch').forEach(el =>
+    el.classList.toggle('active', el.style.background === c || el.style.backgroundColor === c));
+  updateSignPreview();
+}
+
+function setTextColor(c) {
+  nsTextColor = c;
+  document.getElementById('ns-textcolor-picker').value = c;
+  updateSignPreview();
+}
+
+function handleSignUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (file.size > 2*1024*1024) { showToast('ไฟล์ใหญ่เกิน 2MB'); return; }
+  const reader = new FileReader();
+  reader.onload = ev => {
+    nsUploadDataUrl = ev.target.result;
+    document.getElementById('upload-preview-img').src = nsUploadDataUrl;
+    document.getElementById('upload-preview-wrap').style.display = 'block';
+    document.getElementById('upload-dropzone').style.borderColor = 'var(--accent-green)';
+    updateSignPreview();
+  };
+  reader.readAsDataURL(file);
+}
+
+function updateSignPreview() {
+  const label = document.getElementById('ns-id')?.value?.trim() || 'ป้าย';
+  const name  = document.getElementById('ns-name')?.value?.trim() || 'คำอธิบาย';
+  const text  = document.getElementById('ns-text')?.value?.trim() || '';
+  document.getElementById('ns-preview-label').textContent = label;
+  document.getElementById('ns-preview-name').textContent  = name;
+
+  const previewEl = document.getElementById('ns-preview');
+  if (!previewEl) return;
+
+  if (nsMethod === 'upload' && nsUploadDataUrl) {
+    previewEl.innerHTML = `<img src="${nsUploadDataUrl}" style="width:70px;height:70px;object-fit:contain;border-radius:8px;">`;
+  } else {
+    const sign = { id:'preview', label, name, color: nsColor, shape: nsShape, text, textColor: nsTextColor, custom: true };
+    previewEl.innerHTML = makeCustomSVG(sign, 70);
+  }
+}
+
+function makeCustomSVG(sign, size=50) {
+  const s = size, c = sign.color || '#FFCC00', tc = sign.textColor || '#1a1a1a';
+  const txt = sign.text || sign.label || '';
+  const fontSize = txt.length > 3 ? Math.round(s*0.2) : Math.round(s*0.28);
+
+  let body = '';
+  const shape = sign.shape || 'diamond';
+
+  if (shape === 'diamond') {
+    body = `<rect x="${s*0.1}" y="${s*0.1}" width="${s*0.8}" height="${s*0.8}" rx="3"
+      transform="rotate(45 ${s/2} ${s/2})" fill="${c}" stroke="#1a1a1a" stroke-width="${s*0.04}"/>`;
+  } else if (shape === 'circle') {
+    body = `<circle cx="${s/2}" cy="${s/2}" r="${s*0.42}" fill="${c}" stroke="#1a1a1a" stroke-width="${s*0.04}"/>`;
+  } else if (shape === 'rect') {
+    body = `<rect x="${s*0.06}" y="${s*0.06}" width="${s*0.88}" height="${s*0.88}" rx="${s*0.08}"
+      fill="${c}" stroke="#1a1a1a" stroke-width="${s*0.04}"/>`;
+  } else if (shape === 'octagon') {
+    const p = s*0.29, q = s*0.71, m = s*0.06, n = s*0.94;
+    body = `<polygon points="${p},${m} ${q},${m} ${n},${p} ${n},${q} ${q},${n} ${p},${n} ${m},${q} ${m},${p}"
+      fill="${c}" stroke="#1a1a1a" stroke-width="${s*0.04}"/>`;
+  } else if (shape === 'triangle') {
+    body = `<polygon points="${s/2},${s*0.07} ${s*0.93},${s*0.88} ${s*0.07},${s*0.88}"
+      fill="${c}" stroke="#1a1a1a" stroke-width="${s*0.04}"/>`;
+  }
+
+  const textEl = txt ? `<text x="${s/2}" y="${s/2 + fontSize*0.38}" text-anchor="middle"
+    fill="${tc}" font-size="${fontSize}" font-weight="bold" font-family="'Sarabun',sans-serif">${txt}</text>` : '';
+
+  return `<svg width="${s}" height="${s}" viewBox="0 0 ${s} ${s}" class="sign-svg">${body}${textEl}</svg>`;
+}
+
+function saveCustomSign() {
+  const id   = document.getElementById('ns-id').value.trim();
+  const name = document.getElementById('ns-name').value.trim();
+  const text = document.getElementById('ns-text')?.value?.trim() || '';
+  if (!id)   { showToast('กรุณากรอกชื่อป้าย'); return; }
+  if (!name) { showToast('กรุณากรอกคำอธิบาย'); return; }
+
+  // Check duplicate
+  if (allSigns().find(s => s.id === id)) { showToast(`มีป้าย "${id}" อยู่แล้ว`); return; }
+
+  const newSign = {
+    id, label: id, name,
+    color:     nsColor,
+    textColor: nsTextColor,
+    shape:     nsShape,
+    text,
+    custom:    true,
+    imageData: nsMethod === 'upload' ? nsUploadDataUrl : null,
+  };
+
+  customSigns.push(newSign);
+  saveCustomSigns();
+
+  // Reset form
+  document.getElementById('ns-id').value = '';
+  document.getElementById('ns-name').value = '';
+  document.getElementById('ns-text').value = '';
+  nsUploadDataUrl = null;
+  document.getElementById('upload-preview-wrap').style.display = 'none';
+  document.getElementById('upload-dropzone').style.borderColor = '';
+  updateSignPreview();
+
+  renderAllSignsGrid();
+  renderSignPreviewGrid();
+  if (adminLoggedIn) refreshSignChips();
+  showToast(`บันทึกป้าย "${id}" แล้ว ✅`);
+  autoSync();
+}
+
+function deleteCustomSign(id) {
+  customSigns = customSigns.filter(s => s.id !== id);
+  saveCustomSigns();
+  renderAllSignsGrid();
+  renderSignPreviewGrid();
+  if (adminLoggedIn) refreshSignChips();
+  showToast('ลบป้ายแล้ว');
+}
+
+function renderAllSignsGrid() {
+  const el = document.getElementById('all-signs-grid');
+  if (!el) return;
+  const all = allSigns();
+  el.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:10px;">` +
+    all.map(s => {
+      const isBuiltin = !s.custom;
+      const svg = s.imageData
+        ? `<img src="${s.imageData}" style="width:52px;height:52px;object-fit:contain;">`
+        : (s.custom ? makeCustomSVG(s, 52) : makeSVGSign(s, 52));
+      return `<div class="sign-grid-item ${isBuiltin?'builtin':''}">
+        ${!isBuiltin ? `<button class="sign-del" onclick="deleteCustomSign('${s.id}')">✕</button>` : ''}
+        ${svg}
+        <div class="sign-lbl">${s.label}</div>
+        <div style="font-size:10px;color:var(--text-muted);text-align:center;">${s.name}</div>
+      </div>`;
+    }).join('') + `</div>`;
+}
+
+function renderSignPreviewGrid() {
+  const el = document.getElementById('sign-preview-grid');
+  if (!el) return;
+  el.innerHTML = allSigns().map(s => {
+    const svg = s.imageData
+      ? `<img src="${s.imageData}" style="width:36px;height:36px;object-fit:contain;">`
+      : (s.custom ? makeCustomSVG(s, 36) : makeSVGSign(s, 36));
+    return `<div title="${s.name}" style="display:flex;flex-direction:column;align-items:center;gap:3px;">
+      ${svg}
+      <span style="font-size:10px;color:var(--text-muted);">${s.label}</span>
+    </div>`;
+  }).join('');
+}
+
+function refreshSignChips() {
+  const chips = document.getElementById('sign-chips');
+  if (!chips) return;
+  chips.innerHTML = allSigns().map(s => `
+    <div class="chip ${selectedSign===s.id?'selected':''}" onclick="selectSignChip('${s.id}',this)">
+      ${s.label} ${s.name}
+    </div>
+  `).join('');
+}
+
+// Default routes (3 starter routes, unlimited can be added)
+function defaultRoutes() {
+  return [
+    {
+      id: Date.now(), seq: 1,
+      name: 'ศูนย์ประจักษ์ → โรงงาน KSP',
+      desc: 'เส้นทางหลัก ผ่านทางหลวง',
+      checkpoints: [
+        { id:1, name:'จุดเริ่มต้น ศูนย์ประจักษ์', lat:17.5350, lng:102.1820, sign:'ต.๑', msg:'เริ่มต้นการเดินทาง ขับรถด้วยความระมัดระวัง', triggered:false },
+        { id:2, name:'สี่แยกบ้านดอน', lat:17.5120, lng:102.1650, sign:'ต.๑๑', msg:'ระวัง! ทางโค้งซ้ายข้างหน้า', triggered:false },
+        { id:3, name:'ทางรถไฟตัด', lat:17.4950, lng:102.1500, sign:'ต.๒๒', msg:'ระวัง! ทางรถไฟตัดผ่าน หยุดฟังสัญญาณ', triggered:false },
+        { id:4, name:'เข้าโรงงาน KSP', lat:17.4780, lng:102.1350, sign:'ต.๓๔', msg:'หยุด! ตรวจสอบก่อนเข้าโรงงาน', triggered:false },
+      ]
+    },
+    { id: Date.now()+1, seq: 2, name: 'เส้นทางที่ 2', desc: 'ยังไม่ได้กำหนดจุด', checkpoints: [] },
+    { id: Date.now()+2, seq: 3, name: 'เส้นทางที่ 3', desc: 'ยังไม่ได้กำหนดจุด', checkpoints: [] },
+  ];
+}
+
+// ═══════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════
+let routes = loadData('ksp_routes') || defaultRoutes();
+let selectedRouteId = loadData('ksp_selected_route') || 1;
+let settings = loadData('ksp_settings') || { pin:'1234', alertRange:150, ttsOn:true, beepOn:true, volume:0.8, sheetsUrl:'' };
+let adminLoggedIn = false;
+let selectedSign = '';
+
+// GPS & Map state
+let map, truckMarker, routeLine, osrmPolyline;
+let watchId = null;
+let currentPos = null;
+// alertedCPs — แจ้งแล้วในรอบนี้ ไม่แจ้งซ้ำตลอด session
+// ล้างเฉพาะตอนเริ่ม simulation ใหม่ หรือเปลี่ยนเส้นทาง
+let alertedCPs = new Set();
+
+// Simulation state
+let simRunning = false;
+let simPoints = [];   // full OSRM geometry points
+let simIndex = 0;
+let simTimer = null;
+let simSpeedMultiplier = 1;
+
+// ═══════════════════════════════════════════════════════════
+// STORAGE
+// ═══════════════════════════════════════════════════════════
+function saveData(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch(e){} }
+function loadData(key) { try { const v=localStorage.getItem(key); return v?JSON.parse(v):null; } catch(e){return null;} }
+function saveRoutes() { saveData('ksp_routes', routes); }
+function saveSettings() { saveData('ksp_settings', settings); }
+
+// ═══════════════════════════════════════════════════════════
+// MAP INIT
+// ═══════════════════════════════════════════════════════════
+function initMap() {
+  map = L.map('map', { zoomControl: false, attributionControl: false }).setView([17.506, 102.160], 11);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19, attribution: '© OpenStreetMap'
+  }).addTo(map);
+
+  // Truck icon
+  const truckIcon = L.divIcon({
+    html: '<div id="truck-icon" style="font-size:32px;line-height:1;filter:drop-shadow(0 2px 4px #000a);transform-origin:center center;transition:transform 0.25s ease;">🚛</div>',
+    iconSize: [36,36], iconAnchor: [18,18], className: ''
+  });
+  truckMarker = L.marker([17.535, 102.182], { icon: truckIcon, zIndexOffset: 1000 }).addTo(map);
+
+  document.getElementById('btn-center').onclick = centerOnTruck;
+  document.getElementById('btn-fit').onclick = fitRoute;
+
+  loadSelectedRoute();
+  startGPS();
+}
+
+// ═══════════════════════════════════════════════════════════
+// OSRM ROUTING
+// ═══════════════════════════════════════════════════════════
+// ROUTING — Direct OSRM fetch from browser
+// ═══════════════════════════════════════════════════════════
+
+let lrmControl = null;
+
+function fetchOSRMRoute(waypoints) { return Promise.resolve(null); }
+
+async function drawOSRMRoute(checkpoints) {
+  if (osrmPolyline) { map.removeLayer(osrmPolyline); osrmPolyline = null; }
+  if (map._overlayLine) { map.removeLayer(map._overlayLine); map._overlayLine = null; }
+  if (lrmControl) { map.removeControl(lrmControl); lrmControl = null; }
+  simPoints = [];
+
+  if (!checkpoints || checkpoints.length < 2) {
+    updateRouteStats(null);
+    if (checkpoints?.length > 0) drawCheckpointMarkers(checkpoints);
+    return;
+  }
+
+  showLoading('กำลังโหลดเส้นทาง...');
+
+  const coords = checkpoints.map(c => `${c.lng},${c.lat}`).join(';');
+  const radiuses = checkpoints.map(() => '2000').join(';');
+  const urls = [
+    `https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson&steps=true&continue_straight=false&radiuses=${radiuses}`,
+    `https://routing.openstreetmap.de/routed-car/route/v1/driving/${coords}?overview=full&geometries=geojson&steps=true&continue_straight=false&radiuses=${radiuses}`,
+  ];
+
+  for (const url of urls) {
+    try {
+      const ctrl = new AbortController();
+      const tid = setTimeout(() => ctrl.abort(), 15000);
+      const res = await fetch(url, { signal: ctrl.signal });
+      clearTimeout(tid);
+      if (!res.ok) continue;
+      const data = await res.json();
+      if (data.code === 'Ok' && data.routes?.[0]) {
+        const route = data.routes[0];
+
+        // รวม geometry จากทุก step ของทุก leg ให้ต่อกันสนิท
+        const allCoords = [];
+        for (const leg of route.legs) {
+          for (const step of leg.steps) {
+            const pts = step.geometry.coordinates.map(c => [c[1], c[0]]);
+            for (const pt of pts) {
+              // ไม่เพิ่มจุดซ้ำติดกัน
+              if (allCoords.length === 0) {
+                allCoords.push(pt);
+              } else {
+                const prev = allCoords[allCoords.length - 1];
+                const isSame = Math.abs(prev[0]-pt[0]) < 1e-7 && Math.abs(prev[1]-pt[1]) < 1e-7;
+                if (!isSame) allCoords.push(pt);
+              }
+            }
+          }
+        }
+
+        const distKm = (route.distance / 1000).toFixed(1);
+        hideLoading();
+        drawRouteLines(allCoords);
+        updateRouteStatsManual(distKm, checkpoints.length);
+        drawCheckpointMarkers(checkpoints);
+        fitRoute();
+        showToast(`โหลดเส้นทางสำเร็จ ${distKm} กม. ✅`);
+        return;
+      }
+    } catch(e) { /* ลอง url ถัดไป */ }
+  }
+
+  // ถ้า OSRM ไม่สำเร็จ ลอง LRM เป็น backup
+  hideLoading();
+  tryLRM(checkpoints);
+}
+
+function tryLRM(checkpoints) {
+  if (typeof L.Routing === 'undefined') {
+    fallbackStraightLine(checkpoints);
+    return;
+  }
+  showLoading('กำลังโหลดผ่าน LRM...');
+  let done = false;
+
+  lrmControl = L.Routing.control({
+    waypoints: checkpoints.map(c => L.latLng(c.lat, c.lng)),
+    router: L.Routing.osrmv1({ serviceUrl: 'https://router.project-osrm.org/route/v1' }),
+    lineOptions: { styles: [] },
+    addWaypoints: false, fitSelectedRoutes: false,
+    showAlternatives: false, createMarker: () => null, show: false,
+  });
+
+  lrmControl.on('routesfound', (e) => {
+    if (done) return; done = true;
+    hideLoading();
+    const route = e.routes[0];
+    const coords = route.coordinates.map(c => [c.lat, c.lng]);
+    simPoints = coords;
+    drawRouteLines(coords);
+    const distKm = (route.summary.totalDistance / 1000).toFixed(1);
+    updateRouteStatsManual(distKm, checkpoints.length);
+    drawCheckpointMarkers(checkpoints);
+    fitRoute();
+    showToast(`โหลดเส้นทางสำเร็จ ${distKm} กม. ✅`);
+  });
+
+  lrmControl.on('routingerror', () => {
+    if (done) return; done = true;
+    hideLoading();
+    fallbackStraightLine(checkpoints);
+    showToast('ใช้เส้นตรงแทน — กด 🔄 เพื่อลองใหม่');
+  });
+
+  lrmControl.addTo(map);
+
+  setTimeout(() => {
+    if (!done) { done = true; hideLoading(); fallbackStraightLine(checkpoints); showToast('Timeout — กด 🔄'); }
+  }, 20000);
+}
+
+function drawRouteLines(coords) {
+  simPoints = coords;
+  if (osrmPolyline) map.removeLayer(osrmPolyline);
+  if (map._overlayLine) map.removeLayer(map._overlayLine);
+  // เส้นใต้ (เงา)
+  map._overlayLine = L.polyline(coords, {
+    color: '#005580', weight: 10, opacity: 0.4
+  }).addTo(map);
+  // เส้นหลัก
+  osrmPolyline = L.polyline(coords, {
+    color: '#00d4ff', weight: 6, opacity: 1.0
+  }).addTo(map);
+}
+
+function fallbackStraightLine(checkpoints) {
+  const coords = checkpoints.map(c => [c.lat, c.lng]);
+  simPoints = coords;
+  if (!osrmPolyline) {
+    osrmPolyline = L.polyline(coords, { color:'#f5a623', weight:4, opacity:0.75, dashArray:'10 8' }).addTo(map);
+  }
+  updateRouteStats(null);
+  drawCheckpointMarkers(checkpoints);
+  fitRoute();
+}
+
+function calcPolylineKm(coords) {
+  let dist = 0;
+  for (let i = 0; i < coords.length - 1; i++) {
+    dist += getDistance(coords[i][0], coords[i][1], coords[i+1][0], coords[i+1][1]);
+  }
+  return (dist / 1000).toFixed(1);
+}
+
+function updateRouteStatsManual(distKm, cpCount) {
+  const route = getSelectedRoute();
+  if (!route) return;
+  document.getElementById('stat-route').textContent = `R${route.seq || ''}`;
+  document.getElementById('stat-dist').textContent = distKm;
+  document.getElementById('stat-cp').textContent = cpCount;
+}
+
+function calcBearing(lat1, lng1, lat2, lng2) {
+  const toRad = d => d * Math.PI / 180;
+  const toDeg = r => r * 180 / Math.PI;
+  const dLng = toRad(lng2 - lng1);
+  const y = Math.sin(dLng) * Math.cos(toRad(lat2));
+  const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) -
+            Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(dLng);
+  return (toDeg(Math.atan2(y, x)) + 360) % 360;
+}
+
+function rotateTruck(bearing) {
+  const el = document.getElementById('truck-icon');
+  if (!el) return;
+  // แบ่งทิศ: ขวา (East 0-180°) และซ้าย (West 180-360°)
+  // 🚛 emoji หันซ้ายเป็น default
+  // ถ้าวิ่งไปทางขวา (bearing 0-180) → flip แนวนอน (scaleX(-1))
+  // ถ้าวิ่งไปทางซ้าย (bearing 180-360) → ปกติ
+  if (bearing >= 0 && bearing < 180) {
+    el.style.transform = 'scaleX(-1)';
+  } else {
+    el.style.transform = 'scaleX(1)';
+  }
+}
+
+function updateRouteStats(osrmRoute) {
+  const route = getSelectedRoute();
+  if (!route) {
+    document.getElementById('stat-route').textContent = '-';
+    document.getElementById('stat-dist').textContent = '-';
+    document.getElementById('stat-cp').textContent = '-';
+    return;
+  }
+  document.getElementById('stat-route').textContent = `R${route.seq||route.id}`;
+  document.getElementById('stat-cp').textContent = route.checkpoints.length;
+  document.getElementById('stat-dist').textContent = osrmRoute ? (osrmRoute.distance/1000).toFixed(1) : '-';
+}
+
+function drawCheckpointMarkers(checkpoints) {
+  // Remove old markers
+  if (map._cpMarkers) map._cpMarkers.forEach(m => map.removeLayer(m));
+  map._cpMarkers = [];
+
+  checkpoints.forEach((cp, i) => {
+    const sign = allSigns().find(s => s.id === cp.sign) || SIGN_TYPES[SIGN_TYPES.length-1];
+    const icon = L.divIcon({
+      html: `<div style="background:${sign.color};border:2px solid #1a1a1a;border-radius:4px;padding:3px 8px;font-size:11px;font-weight:700;color:#1a1a1a;white-space:nowrap;box-shadow:0 2px 6px #0008;">${i+1}. ${cp.name}</div>`,
+      className:'', iconAnchor:[0,10]
+    });
+    const m = L.marker([cp.lat, cp.lng], {icon}).addTo(map);
+    m.bindPopup(`<b>${cp.name}</b><br>${cp.sign} — ${sign.name}<br><i>${cp.msg||''}</i>`);
+    map._cpMarkers.push(m);
+  });
+}
+
+async function reloadRoute() {
+  // ถ้ามี Sheets URL → ดึงข้อมูลล่าสุดจาก Google Sheets ก่อน
+  if (settings.sheetsUrl) {
+    showLoading('กำลังดึงข้อมูลล่าสุดจาก Cloud...');
+    try {
+      const data = await getFromSheets('action=getAll');
+      hideLoading();
+      if (data.success) {
+        let updated = false;
+        if (data.routes?.length) {
+          routes = data.routes;
+          saveRoutes();
+          renderRouteList();
+          updated = true;
+        }
+        if (data.customSigns?.length) {
+          customSigns = data.customSigns;
+          saveCustomSigns();
+          renderSignPreviewGrid();
+        }
+        if (updated) {
+          if (!getSelectedRoute()) {
+            selectedRouteId = routes[0]?.id || null;
+            saveData('ksp_selected_route', selectedRouteId);
+          }
+          const timeStr = new Date().toLocaleTimeString('th-TH', {hour:'2-digit',minute:'2-digit'});
+          const badge = document.getElementById('last-sync-badge');
+          if (badge) { badge.style.display='block'; badge.textContent = `☁️ อัปเดตแล้ว ${timeStr}`; }
+          showToast('อัปเดตข้อมูลจาก Cloud ✅');
+        } else {
+          showToast('ข้อมูลล่าสุดแล้วครับ');
+        }
+      } else {
+        showToast('ดึงข้อมูลไม่ได้ ใช้ข้อมูลในเครื่อง');
+      }
+    } catch(e) {
+      hideLoading();
+      showToast('เชื่อมต่อ Cloud ไม่ได้ ใช้ข้อมูลในเครื่อง');
+    }
+  }
+
+  // โหลดเส้นทางใหม่บนแผนที่
+  simPoints = [];
+  loadSelectedRoute();
+}
+
+function fitRoute() {
+  if (osrmPolyline) {
+    map.fitBounds(osrmPolyline.getBounds(), { padding: [60, 60] });
+  }
+}
+function centerOnTruck() {
+  if (truckMarker) map.setView(truckMarker.getLatLng(), 15);
+}
+
+// ═══════════════════════════════════════════════════════════
+// SIMULATION — follows OSRM points at ~60 km/h
+// ═══════════════════════════════════════════════════════════
+function toggleSimulation() {
+  if (simRunning) stopSimulation();
+  else startSimulation();
+}
+
+async function startSimulation() {
+  const route = getSelectedRoute();
+  if (route.checkpoints.length < 2) {
+    showToast('ต้องมีจุดตรวจสอบอย่างน้อย 2 จุด');
+    return;
+  }
+
+  // Ensure OSRM route loaded
+  if (simPoints.length < 2) {
+    await drawOSRMRoute(route.checkpoints);
+  }
+  if (simPoints.length < 2) {
+    showToast('ไม่สามารถโหลดเส้นทางได้');
+    return;
+  }
+
+  // Reset
+  resetCheckpointTriggers();
+  alertedCPs.clear();
+  simIndex = 0;
+  simRunning = true;
+
+  document.getElementById('sim-btn').textContent = '⏹ หยุด';
+  document.getElementById('sim-btn').classList.add('running');
+  document.getElementById('speed-btns').style.display = 'flex';
+  setSimSpeed(simSpeedMultiplier);
+  addLog('🚛 เริ่มจำลองเส้นทาง', 'info');
+
+  // Position truck at start
+  truckMarker.setLatLng(simPoints[0]);
+  map.setView(simPoints[0], 14);
+
+  // ── แจ้งเตือนจุดที่ 1 ทันทีเมื่อเริ่ม ──
+  const firstCP = route.checkpoints[0];
+  if (firstCP) {
+    setTimeout(() => {
+      triggerAlert(firstCP, 0);
+      const key = `${selectedRouteId}_${firstCP.id}`;
+      alertedCPs.add(key);
+    }, 800);
+  }
+
+  showToast('เริ่มจำลองการเดินทาง...');
+  runSimStep();
+}
+
+function runSimStep() {
+  if (!simRunning || simIndex >= simPoints.length - 1) {
+    if (simRunning) {
+      simRunning = false;
+      document.getElementById('sim-btn').textContent = '▶ จำลอง';
+      document.getElementById('sim-btn').classList.remove('running');
+      showToast('จบเส้นทาง ✅');
+      addLog('✅ จบการจำลองเส้นทาง', 'info');
+    }
+    return;
+  }
+
+  const from = simPoints[simIndex];
+  const to = simPoints[simIndex + 1];
+  const dist = getDistance(from[0], from[1], to[0], to[1]); // meters
+
+  // ส่ง dist แทน duration — animateTruck คำนวณ speed real-time
+  animateTruck(from, to, dist, () => {
+    simIndex++;
+    updateSpeedDisplay(Math.round(60 * simSpeedMultiplier));
+
+    // Check proximity at new position
+    const pos = simPoints[simIndex];
+    checkProximityAtPos(pos[0], pos[1]);
+
+    runSimStep();
+  });
+}
+
+function setSimSpeed(x) {
+  simSpeedMultiplier = x;
+  [1,3,5,10].forEach(n => {
+    const btn = document.getElementById('spd-'+n);
+    if (btn) btn.classList.toggle('active', n === x);
+  });
+  if (simRunning) updateSpeedDisplay(Math.round(60 * x));
+}
+
+function animateTruck(from, to, distMeters, cb) {
+  const fromLL = L.latLng(from[0], from[1]);
+  const toLL   = L.latLng(to[0],   to[1]);
+  let progress = 0;
+  let lastTime = performance.now();
+
+  // หมุนหัวรถตามทิศทาง
+  const bearing = calcBearing(from[0], from[1], to[0], to[1]);
+  rotateTruck(bearing);
+
+  function step(now) {
+    if (!simRunning) return;
+    const delta = (now - lastTime) / 1000;
+    lastTime = now;
+
+    const speed = 16.67 * simSpeedMultiplier;
+    progress += (speed * delta) / distMeters;
+    progress = Math.min(progress, 1);
+
+    const t = progress;
+    const lat = fromLL.lat + (toLL.lat - fromLL.lat) * t;
+    const lng = fromLL.lng + (toLL.lng - fromLL.lng) * t;
+    truckMarker.setLatLng([lat, lng]);
+
+    // Smooth camera follow
+    const center = map.getCenter();
+    map.panTo(L.latLng(
+      center.lat + (lat - center.lat) * 0.06,
+      center.lng + (lng - center.lng) * 0.06
+    ), { animate: false });
+
+    if (progress < 1) {
+      simTimer = requestAnimationFrame(step);
+    } else {
+      cb();
+    }
+  }
+  simTimer = requestAnimationFrame(step);
+}
+
+function stopSimulation() {
+  simRunning = false;
+  if (simTimer) cancelAnimationFrame(simTimer);
+  document.getElementById('sim-btn').textContent = '▶ จำลอง';
+  document.getElementById('sim-btn').classList.remove('running');
+  document.getElementById('speed-btns').style.display = 'none';
+  updateSpeedDisplay(0);
+  alertedCPs.clear();
+  closeAlert();
+}
+
+// ═══════════════════════════════════════════════════════════
+// GPS
+// ═══════════════════════════════════════════════════════════
+let gpsFirstLock = true; // flag สำหรับ GPS lock ครั้งแรก
+
+function startGPS() {
+  if (!navigator.geolocation) { showToast('อุปกรณ์ไม่รองรับ GPS'); return; }
+  watchId = navigator.geolocation.watchPosition(
+    pos => {
+      currentPos = pos.coords;
+      document.getElementById('gps-dot').classList.add('active');
+      document.getElementById('gps-label').textContent = 'GPS';
+      updateSpeedDisplay(Math.round((pos.coords.speed||0)*3.6));
+
+      if (!simRunning) {
+        const ll = [pos.coords.latitude, pos.coords.longitude];
+        // หมุนหัวรถตาม heading GPS จริง
+        if (pos.coords.heading != null && !isNaN(pos.coords.heading)) {
+          rotateTruck(pos.coords.heading);
+        }
+        truckMarker.setLatLng(ll);
+
+        // GPS lock ครั้งแรก → แจ้งเตือนจุดที่ 1 ทันที
+        if (gpsFirstLock) {
+          gpsFirstLock = false;
+          const route = getSelectedRoute();
+          if (route?.checkpoints?.length > 0) {
+            const firstCP = route.checkpoints[0];
+            const key = `${selectedRouteId}_${firstCP.id}`;
+            if (!alertedCPs.has(key)) {
+              triggerAlert(firstCP, 0);
+              alertedCPs.add(key);
+            }
+          }
+        }
+
+        checkProximityAtPos(pos.coords.latitude, pos.coords.longitude);
+      }
+    },
+    err => {
+      document.getElementById('gps-dot').classList.remove('active');
+      document.getElementById('gps-label').textContent = 'ไม่มี GPS';
+    },
+    { enableHighAccuracy: true, maximumAge: 2000, timeout: 10000 }
+  );
+}
+
+function updateSpeedDisplay(spd) {
+  document.getElementById('stat-speed').textContent = spd;
+}
+
+// ═══════════════════════════════════════════════════════════
+// PROXIMITY CHECK
+// ═══════════════════════════════════════════════════════════
+function checkProximityAtPos(lat, lng) {
+  const route = getSelectedRoute();
+  if (!route) return;
+  const defaultRange = settings.alertRange || 150;
+  route.checkpoints.forEach(cp => {
+    const dist = getDistance(lat, lng, cp.lat, cp.lng);
+    const range = cp.alertRange || defaultRange; // ใช้ระยะเฉพาะจุด ถ้ามี
+    const key  = `${selectedRouteId}_${cp.id}`;
+    if (dist <= range && !alertedCPs.has(key)) {
+      alertedCPs.add(key);
+      triggerAlert(cp, Math.round(dist));
+    }
+  });
+}
+
+function triggerAlert(cp, dist) {
+  const sign = allSigns().find(s => s.id === cp.sign) || SIGN_TYPES[SIGN_TYPES.length-1];
+  showAlert(cp, sign, dist);
+  if (settings.ttsOn) speakThai(cp.msg || `ระวัง ${sign.name} ข้างหน้า`);
+  if (settings.beepOn) playBeep();
+  addLog(`⚠️ ${cp.name} — ${sign.name} (ห่าง ${dist}ม.)`, 'warn');
+}
+
+function showAlert(cp, sign, dist) {
+  let signHtml = '';
+  if (sign.imageData) {
+    signHtml = `<img src="${sign.imageData}" style="width:60px;height:60px;object-fit:contain;border-radius:8px;">`;
+  } else if (sign.custom) {
+    signHtml = makeCustomSVG(sign, 60);
+  } else {
+    signHtml = makeSVGSign(sign, 60);
+  }
+  document.getElementById('alert-sign').innerHTML = signHtml;
+  document.getElementById('alert-title').textContent = `⚠️ ${sign.name}`;
+  document.getElementById('alert-msg').textContent = cp.msg || `ระวัง ${sign.name} ข้างหน้า`;
+  document.getElementById('alert-dist').textContent = `ห่าง ${dist} เมตร • จุด: ${cp.name}`;
+  const el = document.getElementById('alert-popup');
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 8000);
+}
+
+function closeAlert() {
+  document.getElementById('alert-popup').classList.remove('show');
+}
+
+// ═══════════════════════════════════════════════════════════
+// SVG SIGNS
+// ═══════════════════════════════════════════════════════════
+function makeSVGSign(sign, size=50) {
+  const s = size;
+  if (sign.arrow === 'stop') {
+    return `<svg width="${s}" height="${s}" viewBox="0 0 100 100" class="sign-svg">
+      <polygon points="30,5 70,5 95,30 95,70 70,95 30,95 5,70 5,30" fill="#e74c3c" stroke="#1a1a1a" stroke-width="4"/>
+      <text x="50" y="62" text-anchor="middle" fill="white" font-size="28" font-weight="bold" font-family="sans-serif">STOP</text>
+    </svg>`;
+  }
+  if (sign.arrow === 'yield') {
+    return `<svg width="${s}" height="${s}" viewBox="0 0 100 100" class="sign-svg">
+      <polygon points="50,10 90,85 10,85" fill="white" stroke="#e74c3c" stroke-width="8"/>
+      <polygon points="50,30 75,75 25,75" fill="white" stroke="#e74c3c" stroke-width="2"/>
+      <text x="50" y="70" text-anchor="middle" fill="#e74c3c" font-size="16" font-weight="bold" font-family="sans-serif">ให้ทาง</text>
+    </svg>`;
+  }
+  if (sign.arrow === 'speed') {
+    return `<svg width="${s}" height="${s}" viewBox="0 0 100 100" class="sign-svg">
+      <circle cx="50" cy="50" r="45" fill="white" stroke="#e74c3c" stroke-width="8"/>
+      <text x="50" y="58" text-anchor="middle" fill="#e74c3c" font-size="32" font-weight="bold" font-family="sans-serif">30</text>
+    </svg>`;
+  }
+  if (sign.arrow === 'train') {
+    return `<svg width="${s}" height="${s}" viewBox="0 0 100 100" class="sign-svg">
+      <polygon points="50,5 95,95 5,95" fill="#FFCC00" stroke="#1a1a1a" stroke-width="4"/>
+      <text x="50" y="75" text-anchor="middle" fill="#1a1a1a" font-size="40">🚂</text>
+    </svg>`;
+  }
+  // Default diamond
+  let inner = '';
+  if (sign.arrow === 'narrow') {
+    inner = `<polygon points="50,30 58,50 50,70 42,50" fill="#1a1a1a"/>
+             <line x1="35" y1="35" x2="35" y2="65" stroke="#1a1a1a" stroke-width="4"/>
+             <line x1="65" y1="35" x2="65" y2="65" stroke="#1a1a1a" stroke-width="4"/>`;
+  } else if (sign.arrow === 'curve-l') {
+    inner = `<path d="M60 65 Q35 50 60 35" stroke="#1a1a1a" stroke-width="5" fill="none"/>
+             <polygon points="60,35 55,43 65,43" fill="#1a1a1a"/>`;
+  } else if (sign.arrow === 'curve-r') {
+    inner = `<path d="M40 65 Q65 50 40 35" stroke="#1a1a1a" stroke-width="5" fill="none"/>
+             <polygon points="40,35 35,43 45,43" fill="#1a1a1a"/>`;
+  } else {
+    inner = `<text x="50" y="60" text-anchor="middle" fill="#1a1a1a" font-size="28">⚠</text>`;
+  }
+  return `<svg width="${s}" height="${s}" viewBox="0 0 100 100" class="sign-svg">
+    <rect x="10" y="10" width="80" height="80" rx="4" transform="rotate(45 50 50)" fill="${sign.color}" stroke="#1a1a1a" stroke-width="4"/>
+    ${inner}
+    <text x="50" y="93" text-anchor="middle" fill="#1a1a1a" font-size="10" font-weight="bold" font-family="sans-serif">${sign.label}</text>
+  </svg>`;
+}
+
+// ═══════════════════════════════════════════════════════════
+// TTS & AUDIO
+// ═══════════════════════════════════════════════════════════
+function speakThai(text) {
+  if (!settings.ttsOn || !window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const utt = new SpeechSynthesisUtterance(text);
+  utt.lang = 'th-TH';
+  utt.rate = 0.9;
+  utt.volume = settings.volume;
+  const voices = window.speechSynthesis.getVoices();
+  const thai = voices.find(v => v.lang.startsWith('th'));
+  if (thai) utt.voice = thai;
+  window.speechSynthesis.speak(utt);
+}
+
+function playBeep() {
+  if (!settings.beepOn) return;
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.frequency.value = 880;
+    gain.gain.setValueAtTime(settings.volume * 0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+    osc.start(); osc.stop(ctx.currentTime + 0.3);
+  } catch(e){}
+}
+
+function testTTS() { speakThai('ทดสอบระบบเสียงแจ้งเตือน ความปลอดภัยมาก่อน'); }
+function testBeep() { playBeep(); }
+
+// ═══════════════════════════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════════════════════════
+function switchTab(name) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  document.getElementById('nav-'+name).classList.add('active');
+  if (name==='map') { setTimeout(()=>map.invalidateSize(),100); }
+}
+
+// ═══════════════════════════════════════════════════════════
+// ROUTE MANAGEMENT
+// ═══════════════════════════════════════════════════════════
+
+// Auto sync to Google Sheets after changes
+
+function loadSelectedRoute() {
+  const route = getSelectedRoute();
+  if (!route) {
+    // ไม่มีเส้นทางเลย — ล้างแผนที่
+    if (window.osrmPolyline) { map.removeLayer(osrmPolyline); osrmPolyline = null; }
+    if (map._cpMarkers) map._cpMarkers.forEach(m => map.removeLayer(m));
+    document.getElementById('stat-route').textContent = '-';
+    document.getElementById('stat-dist').textContent = '-';
+    document.getElementById('stat-cp').textContent = '-';
+    renderRouteList();
+    return;
+  }
+  drawOSRMRoute(route.checkpoints);
+  renderRouteList();
+}
+
+function renderRouteList() {
+  const q = (document.getElementById('route-search')?.value || '').toLowerCase().trim();
+  const filtered = q ? routes.filter(r => r.name.toLowerCase().includes(q) || r.desc.toLowerCase().includes(q)) : routes;
+  const el = document.getElementById('route-list');
+  const countEl = document.getElementById('route-count');
+  if (countEl) countEl.textContent = `แสดง ${filtered.length} จาก ${routes.length} เส้นทาง`;
+
+  if (!filtered.length) {
+    el.innerHTML = `<div class="empty-state">${q ? `ไม่พบเส้นทาง "${q}"` : 'ยังไม่มีเส้นทาง กด + สร้างใหม่'}</div>`;
+    return;
+  }
+  el.innerHTML = filtered.map((r, i) => `
+    <div class="route-card ${r.id===selectedRouteId?'selected':''}" onclick="selectRoute('${r.id}')">
+      <div class="route-num">${i+1}</div>
+      <div class="route-meta">
+        <div class="route-name">${highlightMatch(r.name, q)}</div>
+        <div class="route-desc">${r.desc || 'ไม่มีคำอธิบาย'}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;">
+        <span class="route-badge">${r.checkpoints.length} จุด</span>
+        <button onclick="event.stopPropagation();deleteRoute('${r.id}')" style="background:none;border:none;color:var(--accent-red);font-size:16px;cursor:pointer;padding:0;" title="ลบเส้นทาง">🗑</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function highlightMatch(text, q) {
+  if (!q) return text;
+  const idx = text.toLowerCase().indexOf(q);
+  if (idx < 0) return text;
+  return text.slice(0,idx) + `<mark style="background:var(--accent-gold);color:var(--bg-deep);border-radius:2px;">${text.slice(idx,idx+q.length)}</mark>` + text.slice(idx+q.length);
+}
+
+function showNewRouteModal() {
+  document.getElementById('new-route-modal').style.display = 'flex';
+  document.getElementById('new-route-name').value = '';
+  document.getElementById('new-route-desc').value = '';
+  setTimeout(() => document.getElementById('new-route-name').focus(), 100);
+}
+function hideNewRouteModal() {
+  document.getElementById('new-route-modal').style.display = 'none';
+}
+
+function createNewRoute() {
+  const name = document.getElementById('new-route-name').value.trim();
+  if (!name) { showToast('กรุณากรอกชื่อเส้นทาง'); return; }
+  const newRoute = {
+    id: Date.now(),
+    seq: routes.length + 1,
+    name,
+    desc: document.getElementById('new-route-desc').value.trim() || 'ยังไม่ได้กำหนดจุด',
+    checkpoints: []
+  };
+  routes.push(newRoute);
+  saveRoutes();
+  renderRouteList();
+  hideNewRouteModal();
+  showToast(`สร้างเส้นทาง "${name}" แล้ว ✅`);
+  // Refresh admin dropdown
+  if (adminLoggedIn) loadAdminPanel();
+  // Auto sync if URL set
+  autoSync();
+}
+
+let _pendingDeleteId = null;
+
+function deleteRoute(id) {
+  const route = routes.find(r => String(r.id) === String(id));
+  if (!route) return;
+  _pendingDeleteId = id;
+  document.getElementById('delete-route-name').textContent = `"${route.name}"`;
+  document.getElementById('delete-route-modal').style.display = 'flex';
+}
+
+function confirmDeleteRoute() {
+  if (!_pendingDeleteId) return;
+  const id = _pendingDeleteId;
+  const route = routes.find(r => String(r.id) === String(id));
+  routes = routes.filter(r => String(r.id) !== String(id));
+
+  // ถ้าลบเส้นทางที่เลือกอยู่ ให้เลือกตัวแรกแทน
+  if (String(selectedRouteId) === String(id)) {
+    selectedRouteId = routes.length ? routes[0].id : null;
+    saveData('ksp_selected_route', selectedRouteId);
+  }
+
+  saveRoutes();
+  cancelDeleteRoute();
+  renderRouteList();
+  loadSelectedRoute();
+  if (adminLoggedIn) loadAdminPanel();
+  showToast(`ลบ "${route?.name}" แล้ว`);
+  autoSync();
+}
+
+function cancelDeleteRoute() {
+  _pendingDeleteId = null;
+  document.getElementById('delete-route-modal').style.display = 'none';
+}
+
+function selectRoute(id) {
+  selectedRouteId = id;
+  saveData('ksp_selected_route', id);
+  resetCheckpointTriggers();
+  alertedCPs.clear();
+  gpsFirstLock = true; // reset เพื่อแจ้งเตือนจุดที่ 1 ใหม่
+  if (simRunning) stopSimulation();
+  loadSelectedRoute();
+  showToast(`เลือกเส้นทาง: ${getSelectedRoute().name}`);
+  switchTab('map');
+}
+
+function getSelectedRoute() {
+  if (!routes.length) return null;
+  return routes.find(r => String(r.id) === String(selectedRouteId)) || routes[0];
+}
+
+function resetCheckpointTriggers() {
+  const route = getSelectedRoute();
+  if (!route) return;
+  route.checkpoints.forEach(cp => cp.triggered = false);
+}
+
+// ═══════════════════════════════════════════════════════════
+// ADMIN
+// ═══════════════════════════════════════════════════════════
+function checkPin() {
+  const val = document.getElementById('pin-input').value;
+  if (val === settings.pin) {
+    adminLoggedIn = true;
+    document.getElementById('pin-gate').style.display = 'none';
+    document.getElementById('admin-content').classList.add('visible');
+    loadAdminPanel();
+    document.getElementById('pin-error').style.display = 'none';
+  } else {
+    document.getElementById('pin-error').style.display = 'block';
+    document.getElementById('pin-input').value = '';
+  }
+}
+document.getElementById('pin-input').addEventListener('keyup', e => { if(e.key==='Enter') checkPin(); });
+
+function adminLogout() {
+  adminLoggedIn = false;
+  document.getElementById('pin-gate').style.display = 'flex';
+  document.getElementById('admin-content').classList.remove('visible');
+  document.getElementById('pin-input').value = '';
+}
+
+function loadAdminPanel() {
+  // Route selector — dynamic
+  const sel = document.getElementById('admin-route-sel');
+  sel.innerHTML = routes.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+  // Select currently active route
+  if (routes.find(r => String(r.id) === String(selectedRouteId))) sel.value = selectedRouteId;
+  else sel.value = routes[0]?.id || '';
+
+  // Sign chips & preview
+  refreshSignChips();
+  renderSignPreviewGrid();
+
+  // Sheets URL + auto-sync toggle
+  document.getElementById('sheets-url').value = settings.sheetsUrl || '';
+  const autoEl = document.getElementById('auto-sync-toggle');
+  if (autoEl) autoEl.checked = !!settings.autoSync;
+
+  loadAdminRoute();
+}
+
+function selectSignChip(id, el) {
+  selectedSign = id;
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function loadAdminRoute() {
+  const id = document.getElementById('admin-route-sel').value;
+  const route = routes.find(r => String(r.id) === String(id));
+  if (!route) return;
+  document.getElementById('admin-route-name').value = route.name;
+  document.getElementById('admin-route-desc').value = route.desc || '';
+  renderCPList(route);
+}
+
+function renderCPList(route) {
+  const el = document.getElementById('cp-list');
+  if (!route.checkpoints.length) {
+    el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:12px 0;">ยังไม่มีจุดตรวจสอบ</div>';
+    return;
+  }
+  el.innerHTML = route.checkpoints.map((cp, i) => {
+    const sign = allSigns().find(s => s.id === cp.sign);
+    const signSvg = sign
+      ? (sign.imageData
+          ? `<img src="${sign.imageData}" style="width:28px;height:28px;object-fit:contain;">`
+          : (sign.custom ? makeCustomSVG(sign, 28) : makeSVGSign(sign, 28)))
+      : '';
+    return `
+    <div class="checkpoint-item">
+      <div class="cp-num">${i+1}</div>
+      <div class="cp-info" style="flex:1;min-width:0;">
+        <div class="cp-name">${cp.name}</div>
+        <div class="cp-coords">${cp.lat.toFixed(5)}, ${cp.lng.toFixed(5)}</div>
+        <div class="cp-sign" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
+          ${signSvg}
+          <span>${cp.sign} • ${cp.msg||'-'}</span>
+          ${cp.alertRange ? `<span style="background:var(--accent-blue);color:#fff;border-radius:4px;padding:1px 6px;font-size:10px;">📏 ${cp.alertRange}ม.</span>` : ''}
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">
+        <button onclick="editCP('${cp.id}')" style="background:var(--accent-blue);border:none;color:#fff;border-radius:6px;padding:4px 8px;font-size:12px;cursor:pointer;">✏️ แก้ไข</button>
+        <button class="cp-del" onclick="deleteCP('${cp.id}')">🗑 ลบ</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function showAddCP() {
+  document.getElementById('cp-form-title').textContent = '➕ เพิ่มจุดตรวจสอบ';
+  document.getElementById('cp-save-btn').textContent = '✅ เพิ่มจุด';
+  document.getElementById('cp-edit-id').value = '';
+  clearCPForm();
+  document.getElementById('add-cp-form').style.display = 'block';
+  document.getElementById('add-cp-form').scrollIntoView({ behavior:'smooth' });
+}
+
+function editCP(cpId) {
+  const routeId = document.getElementById('admin-route-sel').value;
+  const route = routes.find(r => String(r.id) === String(routeId));
+  const cp = route?.checkpoints.find(c => String(c.id) === String(cpId));
+  if (!cp) return;
+
+  document.getElementById('cp-form-title').textContent = `✏️ แก้ไขจุด: ${cp.name}`;
+  document.getElementById('cp-save-btn').textContent = '💾 บันทึกการแก้ไข';
+  document.getElementById('cp-edit-id').value = cpId;
+  document.getElementById('cp-name').value = cp.name;
+  document.getElementById('cp-lat').value = cp.lat;
+  document.getElementById('cp-lng').value = cp.lng;
+  document.getElementById('cp-msg').value = cp.msg || '';
+  document.getElementById('cp-alert-range').value = cp.alertRange || '';
+
+  // Select sign chip
+  selectedSign = cp.sign || '';
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
+  document.querySelectorAll('.chip').forEach(c => {
+    if (c.getAttribute('onclick')?.includes(`'${cp.sign}'`)) c.classList.add('selected');
+  });
+
+  document.getElementById('add-cp-form').style.display = 'block';
+  document.getElementById('add-cp-form').scrollIntoView({ behavior:'smooth' });
+}
+
+function hideAddCP() {
+  document.getElementById('add-cp-form').style.display = 'none';
+  clearCPForm();
+}
+
+function clearCPForm() {
+  document.getElementById('cp-name').value = '';
+  document.getElementById('cp-lat').value = '';
+  document.getElementById('cp-lng').value = '';
+  document.getElementById('cp-msg').value = '';
+  document.getElementById('cp-alert-range').value = '';
+  document.getElementById('cp-edit-id').value = '';
+  selectedSign = '';
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
+}
+
+function saveCheckpoint() {
+  const routeId = document.getElementById('admin-route-sel').value;
+  const route = routes.find(r => String(r.id) === String(routeId));
+  const lat  = parseFloat(document.getElementById('cp-lat').value);
+  const lng  = parseFloat(document.getElementById('cp-lng').value);
+  const name = document.getElementById('cp-name').value.trim();
+  const msg  = document.getElementById('cp-msg').value.trim();
+  const alertRange = parseInt(document.getElementById('cp-alert-range').value) || null;
+  const editId = document.getElementById('cp-edit-id').value;
+
+  if (!name || isNaN(lat) || isNaN(lng)) { showToast('กรุณากรอกข้อมูลให้ครบ'); return; }
+
+  if (editId) {
+    const cp = route.checkpoints.find(c => String(c.id) === String(editId));
+    if (!cp) return;
+    cp.name = name;
+    cp.lat  = lat;
+    cp.lng  = lng;
+    cp.sign = selectedSign || cp.sign || 'custom';
+    cp.msg  = msg;
+    if (alertRange) cp.alertRange = alertRange;
+    else delete cp.alertRange;
+    showToast(`แก้ไข "${name}" แล้ว ✅`);
+  } else {
+    const newCp = {
+      id: Date.now(), name, lat, lng,
+      sign: selectedSign || 'custom',
+      msg, triggered: false
+    };
+    if (alertRange) newCp.alertRange = alertRange;
+    route.checkpoints.push(newCp);
+    showToast(`เพิ่มจุด "${name}" แล้ว ✅`);
+  }
+
+  saveRoutes();
+  renderCPList(route);
+  hideAddCP();
+  autoSync();
+}
+
+function useCurrentGPS() {
+  if (currentPos) {
+    document.getElementById('cp-lat').value = currentPos.latitude.toFixed(6);
+    document.getElementById('cp-lng').value = currentPos.longitude.toFixed(6);
+    showToast('ใช้ตำแหน่ง GPS ปัจจุบัน');
+  } else {
+    navigator.geolocation.getCurrentPosition(p => {
+      document.getElementById('cp-lat').value = p.coords.latitude.toFixed(6);
+      document.getElementById('cp-lng').value = p.coords.longitude.toFixed(6);
+      showToast('ใช้ตำแหน่ง GPS ปัจจุบัน');
+    }, () => showToast('ไม่สามารถรับ GPS ได้'));
+  }
+}
+
+function deleteCP(cpId) {
+  const id = document.getElementById('admin-route-sel').value;
+  const route = routes.find(r => String(r.id) === String(id));
+  const cp = route.checkpoints.find(c => String(c.id) === String(cpId));
+  if (!cp) return;
+  route.checkpoints = route.checkpoints.filter(c => String(c.id) !== String(cpId));
+  saveRoutes();
+  renderCPList(route);
+  showToast(`ลบ "${cp.name}" แล้ว`);
+  autoSync();
+}
+
+function saveRoute() {
+  const id = document.getElementById('admin-route-sel').value;
+  const route = routes.find(r => String(r.id) === String(id));
+  route.name = document.getElementById('admin-route-name').value.trim() || route.name;
+  route.desc = document.getElementById('admin-route-desc').value.trim() || route.desc;
+  saveRoutes();
+  renderRouteList();
+  loadSelectedRoute();
+  if (adminLoggedIn) loadAdminPanel();
+  showToast('บันทึกเส้นทางแล้ว ✅');
+  autoSync();
+}
+
+// ═══════════════════════════════════════════════════════════
+// GOOGLE SHEETS SYNC
+// ═══════════════════════════════════════════════════════════
+function saveSheetUrl() {
+  settings.sheetsUrl = document.getElementById('sheets-url').value.trim();
+  saveSettings();
+  showToast('บันทึก URL แล้ว');
+}
+
+function toggleAutoSync() {
+  settings.autoSync = document.getElementById('auto-sync-toggle').checked;
+  saveSettings();
+  showToast(settings.autoSync ? '⚡ เปิด Auto Sync แล้ว' : 'ปิด Auto Sync แล้ว');
+}
+
+// ── helper POST — ใช้ mode no-cors ไม่ได้เพราะอ่าน response ไม่ได้
+// ต้องใช้ redirect follow + text/plain content-type
+async function postToSheets(body) {
+  const res = await fetch(settings.sheetsUrl, {
+    method:   'POST',
+    redirect: 'follow',
+    body:     JSON.stringify(body),
+    headers:  { 'Content-Type': 'text/plain;charset=utf-8' }
+  });
+  const text = await res.text();
+  try { return JSON.parse(text); } catch(e) { return { success: true }; }
+}
+
+async function getFromSheets(params = '') {
+  // ใช้ no-cors ไม่ได้อ่าน body — ต้อง follow redirect
+  const url = settings.sheetsUrl + (params ? '?' + params : '');
+  const res  = await fetch(url, { redirect: 'follow' });
+  const text = await res.text();
+  return JSON.parse(text);
+}
+
+async function syncToSheets() {
+  if (!settings.sheetsUrl) { showToast('กรุณากำหนด URL ก่อน'); return; }
+  showLoading('กำลังอัปโหลดข้อมูลทั้งหมด...');
+  try {
+    // รวม logs จาก DOM
+    const logItems = [];
+    document.querySelectorAll('#log-list .log-entry').forEach(el => {
+      logItems.push({
+        timestamp: el.querySelector('.log-time')?.textContent || '',
+        message:   el.querySelector('.log-msg')?.textContent  || '',
+        type:      el.classList.contains('warn') ? 'warn' : 'info'
+      });
+    });
+
+    const data = await postToSheets({
+      action:      'saveAll',
+      routes,
+      customSigns,
+      logs:        logItems,
+      config: {
+        pin:         settings.pin,
+        alertRange:  settings.alertRange,
+        ttsOn:       settings.ttsOn,
+        beepOn:      settings.beepOn,
+        volume:      settings.volume,
+        lastSync:    new Date().toISOString(),
+      }
+    });
+    hideLoading();
+    if (data.success) {
+      showToast('อัปโหลดทั้งหมดสำเร็จ ✅');
+      document.getElementById('sync-status').textContent =
+        'อัปโหลดล่าสุด: ' + new Date().toLocaleTimeString('th-TH');
+    } else {
+      showToast('เกิดข้อผิดพลาด: ' + (data.error || ''));
+    }
+  } catch(e) {
+    hideLoading();
+    showToast('ไม่สามารถเชื่อมต่อได้: ' + e.message);
+  }
+}
+
+async function syncFromSheets() {
+  if (!settings.sheetsUrl) { showToast('กรุณากำหนด URL ก่อน'); return; }
+  showLoading('กำลังดาวน์โหลดข้อมูล...');
+  try {
+    const data = await getFromSheets('action=getAll');
+    hideLoading();
+
+    if (!data.success) { showToast('เกิดข้อผิดพลาด: ' + (data.error||'')); return; }
+
+    if (data.routes?.length) {
+      routes = data.routes;
+      saveRoutes();
+    }
+    if (data.customSigns?.length) {
+      customSigns = data.customSigns;
+      saveCustomSigns();
+      renderSignPreviewGrid();
+      if (adminLoggedIn) refreshSignChips();
+    }
+    if (data.config) {
+      const cfg = data.config;
+      if (cfg.alertRange) settings.alertRange = +cfg.alertRange;
+      if (cfg.ttsOn  !== undefined) settings.ttsOn  = cfg.ttsOn  === 'true' || cfg.ttsOn  === true;
+      if (cfg.beepOn !== undefined) settings.beepOn = cfg.beepOn === 'true' || cfg.beepOn === true;
+      if (cfg.volume) settings.volume = +cfg.volume;
+      saveSettings();
+      loadSoundSettings();
+    }
+
+    renderRouteList();
+    if (adminLoggedIn) loadAdminPanel();
+    loadSelectedRoute();
+
+    const summary = [
+      data.routes?.length      ? `${data.routes.length} เส้นทาง`      : '',
+      data.customSigns?.length ? `${data.customSigns.length} ป้าย` : '',
+    ].filter(Boolean).join(', ');
+
+    showToast(`ดาวน์โหลดสำเร็จ: ${summary} ✅`);
+    document.getElementById('sync-status').textContent =
+      'ดาวน์โหลดล่าสุด: ' + new Date().toLocaleTimeString('th-TH');
+  } catch(e) {
+    hideLoading();
+    showToast('เชื่อมต่อไม่ได้: ' + e.message);
+  }
+}
+
+async function autoSync() {
+  if (!settings.sheetsUrl || !settings.autoSync) return;
+  try {
+    await postToSheets({ action:'saveAll', routes, customSigns });
+    const el = document.getElementById('sync-status');
+    if (el) el.textContent = 'Auto sync: ' + new Date().toLocaleTimeString('th-TH');
+  } catch(e) {}
+}
+
+// ═══════════════════════════════════════════════════════════
+// SETTINGS
+// ═══════════════════════════════════════════════════════════
+function saveSoundSettings() {
+  settings.ttsOn = document.getElementById('tts-toggle').checked;
+  settings.beepOn = document.getElementById('beep-toggle').checked;
+  settings.alertRange = parseInt(document.getElementById('alert-range').value);
+  settings.volume = parseFloat(document.getElementById('vol-range').value);
+  saveSettings();
+}
+
+function loadSoundSettings() {
+  document.getElementById('tts-toggle').checked = settings.ttsOn !== false;
+  document.getElementById('beep-toggle').checked = settings.beepOn !== false;
+  document.getElementById('alert-range').value = settings.alertRange || 150;
+  document.getElementById('range-val-alert').textContent = (settings.alertRange||150) + 'ม.';
+  document.getElementById('vol-range').value = settings.volume || 0.8;
+  document.getElementById('range-val-vol').textContent = Math.round((settings.volume||0.8)*100) + '%';
+}
+
+// ═══════════════════════════════════════════════════════════
+// LOG
+// ═══════════════════════════════════════════════════════════
+const logs = [];
+function addLog(msg, type='info') {
+  const time = new Date().toLocaleTimeString('th-TH');
+  logs.unshift({ msg, type, time });
+  if (logs.length > 100) logs.pop();
+  const el = document.getElementById('log-list');
+  el.innerHTML = logs.map(l => `
+    <div class="log-entry ${l.type}">
+      <div class="log-time">${l.time}</div>
+      <div class="log-msg">${l.msg}</div>
+    </div>
+  `).join('');
+}
+
+// ═══════════════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════════════
+function getDistance(lat1, lng1, lat2, lng2) {
+  const R = 6371000;
+  const dLat = (lat2-lat1)*Math.PI/180;
+  const dLng = (lng2-lng1)*Math.PI/180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function showToast(msg, dur=2500) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), dur);
+}
+
+function showLoading(msg='กำลังโหลด...') {
+  document.getElementById('loading-msg').textContent = msg;
+  document.getElementById('loading').classList.add('show');
+}
+function hideLoading() {
+  document.getElementById('loading').classList.remove('show');
+}
+
+// ═══════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════
+window.addEventListener('load', () => {
+  initMap();
+  loadSoundSettings();
+  renderRouteList();
+
+  // Load TTS voices
+  if (window.speechSynthesis) {
+    window.speechSynthesis.getVoices();
+    window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+  }
+
+  // Active nav
+  document.getElementById('nav-map').classList.add('active');
+
+  addLog('🟢 ระบบเริ่มทำงาน — KSP SafeRoute', 'info');
+  renderSignPreviewGrid();
+
+  // ดึงข้อมูลล่าสุดจาก Cloud อัตโนมัติตอนเปิดแอป
+  if (settings.sheetsUrl) {
+    setTimeout(() => reloadRoute(), 1500);
+  }
+});
+</script>
+</body>
+</html>
