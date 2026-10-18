@@ -105,6 +105,19 @@
   .route-stat { text-align: center; }
   .route-stat .val { font-family: 'Prompt', sans-serif; font-size: 20px; font-weight: 700; color: var(--accent-gold); }
   .route-stat .lbl { font-size: 11px; color: var(--text-secondary); }
+  #dir-bar {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 8px 10px; margin-bottom: 8px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  #dir-text { flex: 1; min-width: 0; font-size: 13px; line-height: 1.35; color: var(--text-primary); }
+  #dir-text .dir-lbl { color: var(--text-secondary); font-size: 11px; }
+  #dir-text .dir-place { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+  #btn-swap-dir {
+    background: var(--accent-gold); color: var(--bg-deep); border: none;
+    border-radius: 8px; padding: 10px 12px; font-size: 14px; font-weight: 700;
+    font-family: 'Sarabun', sans-serif; cursor: pointer; white-space: nowrap; flex-shrink: 0;
+  }
   #sim-btn {
     background: var(--accent-green); color: #fff; border: none;
     border-radius: 8px; padding: 10px 18px; font-size: 14px;
@@ -403,6 +416,10 @@
       <div id="last-sync-badge" style="display:none;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:4px 10px;font-size:11px;color:var(--text-secondary);text-align:center;"></div>
     </div>
     <div id="route-info-bar">
+      <div id="dir-bar">
+        <div id="dir-text">-</div>
+        <button id="btn-swap-dir" onclick="swapDirection()">⇅ สลับ</button>
+      </div>
       <div id="route-info-card">
         <div class="route-stat">
           <div class="val" id="stat-route">-</div>
@@ -1040,6 +1057,49 @@ let currentPos = null;
 // ล้างเฉพาะตอนเริ่ม simulation ใหม่ หรือเปลี่ยนเส้นทาง
 let alertedCPs = new Set();
 
+// ทิศทางเส้นทาง — true = ขากลับ (ปลายทาง → ต้นทาง) เรียงจุดตรวจย้อนกลับ
+let routeReversed = loadData('ksp_route_reversed') === true;
+
+// จุดตรวจตามทิศทางที่เลือก (ไม่แก้ข้อมูลต้นฉบับ — หน้า Admin ยังแก้ตามลำดับเดิม)
+function activeCheckpoints(route) {
+  if (!route) return [];
+  return routeReversed ? [...route.checkpoints].reverse() : route.checkpoints;
+}
+
+// แยกชื่อเส้นทาง "ต้นทาง - ปลายทาง"
+function routeEnds(route) {
+  const parts = (route?.name || '').split(/\s+-\s+/);
+  const cps = route?.checkpoints || [];
+  const from = parts.length >= 2 ? parts[0] : (cps[0]?.name || route?.name || '-');
+  const to   = parts.length >= 2 ? parts.slice(1).join(' - ') : (cps[cps.length-1]?.name || '-');
+  return routeReversed ? { from: to, to: from } : { from, to };
+}
+
+function renderDirection() {
+  const el = document.getElementById('dir-text');
+  if (!el) return;
+  const route = getSelectedRoute();
+  if (!route) { el.textContent = '-'; return; }
+  const { from, to } = routeEnds(route);
+  el.innerHTML = `<span class="dir-lbl">${routeReversed ? '🔁 ขากลับ' : '➡️ ขาไป'} · ต้นทาง</span>
+    <span class="dir-place">🟢 ${from}</span>
+    <span class="dir-lbl">ปลายทาง</span>
+    <span class="dir-place">🏁 ${to}</span>`;
+}
+
+function swapDirection() {
+  routeReversed = !routeReversed;
+  saveData('ksp_route_reversed', routeReversed);
+  resetCheckpointTriggers();
+  alertedCPs.clear();
+  gpsFirstLock = true;
+  if (simRunning) stopSimulation();
+  simPoints = [];
+  loadSelectedRoute();
+  const { from, to } = routeEnds(getSelectedRoute());
+  showToast(`สลับทิศทาง: ${from} → ${to}`);
+}
+
 // Simulation state
 let simRunning = false;
 let simPoints = [];   // full OSRM geometry points
@@ -1074,11 +1134,10 @@ function initMap() {
   document.getElementById('btn-center').onclick = centerOnTruck;
   document.getElementById('btn-fit').onclick = fitRoute;
 
-  // เมื่อผู้ใช้ปัดแผนที่เอง → หยุดติดตามอัตโนมัติ
-  map.on('dragstart', () => {
-    mapFollowGPS = false;
-    updateFollowBtn();
-  });
+  // เมื่อผู้ใช้ปัดแผนที่เอง → หยุดติดตามชั่วคราว 15 วิ แล้วกลับมาตามรถเอง
+  map.on('dragstart', () => pauseFollow(15000));
+  // ซูมเองระหว่างติดตาม → ใช้ระดับซูมนั้นต่อ
+  map.on('zoomend', () => { if (mapFollowGPS) followZoom = map.getZoom(); });
 
   loadSelectedRoute();
   startGPS();
@@ -1346,15 +1405,37 @@ async function reloadRoute() {
   loadSelectedRoute();
 }
 
+// ── ติดตามรถแบบ GPS นำทาง ──
+// ระยะซูมตอนติดตาม (ผู้ใช้ซูมเองระหว่างติดตาม → จำค่าใหม่)
+let followZoom = 16;
+let _followResumeTimer = null;
+
+// หยุดติดตามชั่วคราว แล้วกลับมาติดตามเองเมื่อครบเวลา (ถ้ามีสัญญาณ GPS)
+function pauseFollow(resumeMs) {
+  mapFollowGPS = false;
+  updateFollowBtn();
+  if (_followResumeTimer) clearTimeout(_followResumeTimer);
+  _followResumeTimer = setTimeout(() => {
+    _followResumeTimer = null;
+    if (currentPos && !simRunning) centerOnTruck();
+  }, resumeMs);
+}
+
 function fitRoute() {
   if (osrmPolyline) {
+    // ดูภาพรวมเส้นทางสักครู่ แล้วกลับไปตามรถ
+    pauseFollow(10000);
     map.fitBounds(osrmPolyline.getBounds(), { padding: [60, 60] });
   }
 }
 function toggleFollow() {
-  mapFollowGPS = !mapFollowGPS;
-  updateFollowBtn();
-  if (mapFollowGPS) centerOnTruck();
+  if (mapFollowGPS) {
+    mapFollowGPS = false;
+    if (_followResumeTimer) { clearTimeout(_followResumeTimer); _followResumeTimer = null; }
+    updateFollowBtn();
+  } else {
+    centerOnTruck();
+  }
 }
 
 function updateFollowBtn() {
@@ -1372,9 +1453,10 @@ function updateFollowBtn() {
 }
 
 function centerOnTruck() {
+  if (_followResumeTimer) { clearTimeout(_followResumeTimer); _followResumeTimer = null; }
   mapFollowGPS = true;
   updateFollowBtn();
-  if (truckMarker) map.setView(truckMarker.getLatLng(), 15, { animate: true });
+  if (truckMarker) map.setView(truckMarker.getLatLng(), followZoom, { animate: true });
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1394,7 +1476,7 @@ async function startSimulation() {
 
   // Ensure OSRM route loaded
   if (simPoints.length < 2) {
-    await drawOSRMRoute(route.checkpoints);
+    await drawOSRMRoute(activeCheckpoints(route));
   }
   if (simPoints.length < 2) {
     showToast('ไม่สามารถโหลดเส้นทางได้');
@@ -1418,7 +1500,7 @@ async function startSimulation() {
   map.setView(simPoints[0], 14);
 
   // ── แจ้งเตือนจุดที่ 1 ทันทีเมื่อเริ่ม ──
-  const firstCP = route.checkpoints[0];
+  const firstCP = activeCheckpoints(route)[0];
   if (firstCP) {
     setTimeout(() => {
       triggerAlert(firstCP, 0);
@@ -1528,8 +1610,26 @@ let _lastGpsPos  = null;
 let _lastGpsTime = null;
 let _gpsInterpolTimer = null; // timer interpolate ตำแหน่งระหว่าง GPS updates
 
+// กันจอดับระหว่างขับ — จอดับแล้วเบราว์เซอร์จะหยุดส่ง GPS แผนที่จะค้าง
+let _wakeLock = null;
+async function requestWakeLock() {
+  try {
+    if ('wakeLock' in navigator && document.visibilityState === 'visible' && !_wakeLock) {
+      _wakeLock = await navigator.wakeLock.request('screen');
+      _wakeLock.addEventListener('release', () => { _wakeLock = null; });
+    }
+  } catch(e) { /* ไม่รองรับ / แบตต่ำ — ข้าม */ }
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    requestWakeLock();
+    if (currentPos && !simRunning && !_followResumeTimer) centerOnTruck();
+  }
+});
+
 function startGPS() {
   if (!navigator.geolocation) { showToast('อุปกรณ์ไม่รองรับ GPS'); return; }
+  requestWakeLock();
   watchId = navigator.geolocation.watchPosition(
     pos => {
       currentPos = pos.coords;
@@ -1573,7 +1673,7 @@ function startGPS() {
 
         // ── แผนที่ตามรถอัตโนมัติ ──
         if (mapFollowGPS) {
-          map.setView([lat, lng], map.getZoom(), { animate: true, duration: 0.5 });
+          map.setView([lat, lng], followZoom, { animate: true, duration: 0.5 });
         }
 
         // GPS lock ครั้งแรก → แจ้งเตือนจุดที่ 1 ทันที
@@ -1581,7 +1681,7 @@ function startGPS() {
           gpsFirstLock = false;
           const route = getSelectedRoute();
           if (route?.checkpoints?.length > 0) {
-            const firstCP = route.checkpoints[0];
+            const firstCP = activeCheckpoints(route)[0];
             const key = `${selectedRouteId}_${firstCP.id}`;
             if (!alertedCPs.has(key)) {
               triggerAlert(firstCP, 0);
@@ -1846,8 +1946,9 @@ function loadSelectedRoute() {
     renderRouteList();
     return;
   }
-  drawOSRMRoute(route.checkpoints);
+  drawOSRMRoute(activeCheckpoints(route));
   renderRouteList();
+  renderDirection();
 }
 
 function renderRouteList() {
@@ -1959,6 +2060,10 @@ function cancelDeleteRoute() {
 }
 
 function selectRoute(id) {
+  if (String(id) !== String(selectedRouteId)) {
+    routeReversed = false; // เลือกเส้นทางใหม่ → เริ่มที่ขาไปเสมอ
+    saveData('ksp_route_reversed', false);
+  }
   selectedRouteId = id;
   saveData('ksp_selected_route', id);
   resetCheckpointTriggers();
