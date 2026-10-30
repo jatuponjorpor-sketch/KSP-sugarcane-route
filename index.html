@@ -6,9 +6,9 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="theme-color" content="#1a2332">
+<meta name="theme-color" content="#ffffff">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>KSP SafeRoute</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet-routing-machine/3.2.12/leaflet-routing-machine.min.css"/>
@@ -17,21 +17,29 @@
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=Prompt:wght@400;600;700&display=swap');
 
+  /* ธีมสว่าง ขาว-เขียว emerald
+     หมายเหตุ: --accent-gold คือ "สีหลักของแอป" (ชื่อเดิมจากธีมมืด) ตอนนี้เป็นเขียว emerald
+     สีเตือนใช้ --warn (เหลืองอำพัน) */
   :root {
-    --bg-deep: #0d1520;
-    --bg-card: #1a2332;
-    --bg-panel: #1e2a3a;
-    --accent-gold: #f5a623;
-    --accent-green: #2ecc71;
-    --accent-red: #e74c3c;
-    --accent-blue: #3498db;
-    --accent-cyan: #00d4ff;
-    --text-primary: #e8f0fe;
-    --text-secondary: #8fa3b8;
-    --text-muted: #546e7a;
-    --border: #2a3f55;
+    --bg-deep: #f1f5f9;
+    --bg-card: #ffffff;
+    --bg-panel: #f8fafc;
+    --accent-gold: #059669;
+    --accent-green: #059669;
+    --accent-red: #dc2626;
+    --accent-blue: #0284c7;
+    --accent-cyan: #10b981;
+    --warn: #f59e0b;
+    --warn-bg: #fffbeb;
+    --warn-border: #fbbf24;
+    --on-accent: #ffffff;
+    --text-primary: #1e293b;
+    --text-secondary: #64748b;
+    --text-muted: #94a3b8;
+    --border: #e2e8f0;
+    --shadow: 0 4px 16px rgb(15 23 42 / 0.08);
     --nav-h: 64px;
-    --radius: 12px;
+    --radius: 16px;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -84,9 +92,9 @@
   }
   .map-btn {
     background: var(--bg-card); border: 1px solid var(--border);
-    color: var(--text-primary); border-radius: 8px;
-    padding: 8px 12px; font-size: 13px; font-family: 'Sarabun', sans-serif;
-    cursor: pointer; white-space: nowrap;
+    color: var(--text-primary); border-radius: 12px;
+    padding: 8px 12px; font-size: 13px; font-weight: 600; font-family: 'Sarabun', sans-serif;
+    cursor: pointer; white-space: nowrap; box-shadow: var(--shadow);
     transition: all 0.2s;
   }
   .map-btn:hover { background: var(--bg-panel); border-color: var(--accent-cyan); }
@@ -100,27 +108,29 @@
   #route-info-card {
     pointer-events: auto; max-width: 560px;
     background: color-mix(in srgb, var(--bg-card) 94%, transparent);
-    border: 1px solid var(--border); border-radius: 10px; padding: 5px 8px;
+    border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 10px;
     display: flex; flex-direction: column; gap: 4px;
-    box-shadow: 0 2px 10px #0008;
+    box-shadow: 0 -4px 24px rgb(15 23 42 / 0.10);
   }
   #dir-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
   #stat-row { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
   .route-stat { display: flex; align-items: baseline; gap: 3px; margin-right: 8px; white-space: nowrap; }
-  .route-stat .val { font-family: 'Prompt', sans-serif; font-size: 16px; font-weight: 700; color: var(--accent-gold); }
+  .route-stat .val { font-family: 'Prompt', sans-serif; font-size: 16px; font-weight: 700; color: var(--text-primary); }
+  #stat-route, #stat-speed { color: var(--accent-green); }
   .route-stat .lbl { font-size: 11px; color: var(--text-secondary); }
   #dir-text {
     flex: 1; min-width: 0; font-size: 13px; color: var(--text-primary); font-weight: 600;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
   #dir-text .dir-tag {
-    font-size: 10px; font-weight: 600; color: var(--bg-deep); background: var(--accent-cyan);
+    font-size: 10px; font-weight: 600; color: var(--on-accent); background: var(--accent-cyan);
     border-radius: 4px; padding: 1px 5px; margin-right: 4px; vertical-align: 1px;
   }
-  #dir-text .dir-tag.back { background: var(--accent-gold); }
+  #dir-text .dir-tag { background: var(--accent-green); color: var(--on-accent); }
+  #dir-text .dir-tag.back { background: var(--warn); }
   #dir-text .dir-arrow { color: var(--text-secondary); margin: 0 3px; }
   #btn-swap-dir {
-    background: var(--accent-gold); color: var(--bg-deep); border: none;
+    background: var(--accent-gold); color: var(--on-accent); border: none;
     border-radius: 6px; padding: 4px 9px; font-size: 13px; font-weight: 700;
     font-family: 'Sarabun', sans-serif; cursor: pointer; white-space: nowrap; flex-shrink: 0;
   }
@@ -140,7 +150,7 @@
     font-weight: 600; cursor: pointer; transition: all 0.15s;
   }
   .speed-btn:hover { border-color: var(--accent-gold); color: var(--text-primary); }
-  .speed-btn.active { background: var(--accent-gold); color: var(--bg-deep); border-color: var(--accent-gold); }
+  .speed-btn.active { background: var(--accent-gold); color: var(--on-accent); border-color: var(--accent-gold); }
 
   /* ── ROUTE TAB ── */
   #tab-route { overflow-y: auto; padding: 16px; gap: 12px; }
@@ -156,14 +166,15 @@
     display: flex; align-items: center; gap: 12px;
   }
   .route-card:hover { border-color: var(--accent-cyan); }
-  .route-card.selected { border-color: var(--accent-gold); background: #1a2f1a; }
+  .route-card.selected { border-color: var(--accent-gold); background: #ecfdf5; }
+  .route-card { box-shadow: 0 1px 3px rgb(15 23 42 / 0.05); }
   .route-num {
     width: 36px; height: 36px; border-radius: 8px;
     background: var(--bg-panel); display: flex; align-items: center; justify-content: center;
     font-family: 'Prompt', sans-serif; font-weight: 700; font-size: 14px;
     color: var(--accent-gold); flex-shrink: 0; border: 1px solid var(--border);
   }
-  .route-card.selected .route-num { background: var(--accent-gold); color: var(--bg-deep); border-color: var(--accent-gold); }
+  .route-card.selected .route-num { background: var(--accent-gold); color: var(--on-accent); border-color: var(--accent-gold); }
   .route-meta { flex: 1; min-width: 0; }
   .route-name { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .route-desc { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
@@ -189,7 +200,7 @@
     border-radius: 0 var(--radius) var(--radius) 0;
     padding: 10px 14px; margin-bottom: 8px;
   }
-  .log-entry.warn { border-color: var(--accent-gold); }
+  .log-entry.warn { border-color: var(--warn); }
   .log-entry.alert { border-color: var(--accent-red); }
   .log-entry .log-time { font-size: 11px; color: var(--text-secondary); }
   .log-entry .log-msg { font-size: 14px; margin-top: 2px; }
@@ -232,7 +243,7 @@
   }
   .pin-input:focus { border-color: var(--accent-gold); }
   .btn-primary {
-    background: var(--accent-gold); color: var(--bg-deep); border: none;
+    background: var(--accent-gold); color: var(--on-accent); border: none;
     border-radius: var(--radius); padding: 12px 28px; font-size: 15px;
     font-family: 'Sarabun', sans-serif; font-weight: 700; cursor: pointer;
     transition: all 0.2s;
@@ -282,7 +293,7 @@
     border-radius: 20px; padding: 6px 14px; font-size: 13px; cursor: pointer;
     transition: all 0.2s;
   }
-  .chip:hover, .chip.selected { background: var(--accent-gold); color: var(--bg-deep); border-color: var(--accent-gold); }
+  .chip:hover, .chip.selected { background: var(--accent-gold); color: var(--on-accent); border-color: var(--accent-gold); }
 
   .sync-row { display: flex; gap: 8px; }
   .sync-row .form-input { flex: 1; }
@@ -310,16 +321,16 @@
   #alert-popup {
     position: fixed; top: 80px; left: 50%; transform: translateX(-50%);
     z-index: 2000; min-width: 300px; max-width: 90vw;
-    background: var(--bg-card); border: 2px solid var(--accent-red);
-    border-radius: var(--radius); padding: 16px 20px;
-    box-shadow: 0 8px 32px #000a, 0 0 0 1px var(--accent-red)44;
+    background: var(--warn-bg); border: 2px solid var(--warn-border);
+    border-radius: var(--radius); padding: 14px 16px;
+    box-shadow: 0 8px 28px rgb(180 83 9 / 0.18);
     display: none; animation: slideDown 0.3s ease;
   }
   #alert-popup.show { display: flex; gap: 14px; align-items: flex-start; }
   @keyframes slideDown { from{transform:translateX(-50%) translateY(-20px);opacity:0} to{transform:translateX(-50%) translateY(0);opacity:1} }
   #alert-sign { flex-shrink: 0; }
   #alert-body { flex: 1; }
-  #alert-title { font-family: 'Prompt', sans-serif; font-size: 16px; font-weight: 700; color: var(--accent-red); }
+  #alert-title { font-family: 'Prompt', sans-serif; font-size: 16px; font-weight: 700; color: #b45309; }
   #alert-msg { font-size: 14px; color: var(--text-primary); margin-top: 4px; }
   #alert-dist { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
   #alert-close { background: none; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer; flex-shrink: 0; }
@@ -328,7 +339,7 @@
   #toast {
     position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
     background: var(--bg-card); border: 1px solid var(--border);
-    border-radius: 20px; padding: 8px 16px; font-size: 13px;
+    border-radius: 20px; padding: 8px 16px; font-size: 13px; box-shadow: var(--shadow);
     z-index: 3000; opacity: 0; pointer-events: none;
     transition: opacity 0.3s; white-space: nowrap;
   }
@@ -339,7 +350,7 @@
 
   /* ── LOADING OVERLAY ── */
   #loading {
-    position: fixed; inset: 0; background: var(--bg-deep)cc;
+    position: fixed; inset: 0; background: rgb(241 245 249 / 0.85);
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     z-index: 9999; gap: 16px; display: none;
   }
@@ -363,7 +374,7 @@
     border-radius:8px; padding:7px 12px; font-size:13px; font-family:'Sarabun',sans-serif;
     cursor:pointer; color:var(--text-secondary); transition:all 0.2s;
   }
-  .shape-btn.active { background:var(--accent-gold); color:var(--bg-deep); border-color:var(--accent-gold); }
+  .shape-btn.active { background:var(--accent-gold); color: var(--on-accent); border-color:var(--accent-gold); }
   .color-swatch {
     width:32px; height:32px; border-radius:6px; cursor:pointer;
     border:2px solid transparent; transition:all 0.15s; flex-shrink:0;
@@ -1149,7 +1160,12 @@ let lrmControl = null;
 
 function fetchOSRMRoute(waypoints) { return Promise.resolve(null); }
 
+// เลขคำขอล่าสุด — ถ้าเปลี่ยนเส้นทาง/สลับทิศระหว่างโหลด ผลของคำขอเก่าจะถูกทิ้ง
+// (กันเส้นทางเก่าที่ตอบกลับช้ามาวาดทับเส้นทางที่เลือกใหม่)
+let _routeReqId = 0;
+
 async function drawOSRMRoute(checkpoints) {
+  const reqId = ++_routeReqId;
   if (osrmPolyline) { map.removeLayer(osrmPolyline); osrmPolyline = null; }
   if (map._overlayLine) { map.removeLayer(map._overlayLine); map._overlayLine = null; }
   if (lrmControl) { map.removeControl(lrmControl); lrmControl = null; }
@@ -1178,6 +1194,7 @@ async function drawOSRMRoute(checkpoints) {
       clearTimeout(tid);
       if (!res.ok) continue;
       const data = await res.json();
+      if (reqId !== _routeReqId) return; // มีคำขอใหม่กว่าแล้ว
       if (data.code === 'Ok' && data.routes?.[0]) {
         const route = data.routes[0];
 
@@ -1209,9 +1226,11 @@ async function drawOSRMRoute(checkpoints) {
         return;
       }
     } catch(e) { /* ลอง url ถัดไป */ }
+    if (reqId !== _routeReqId) return;
   }
 
   // ถ้า OSRM ไม่สำเร็จ ลอง LRM เป็น backup
+  if (reqId !== _routeReqId) return;
   hideLoading();
   tryLRM(checkpoints);
 }
@@ -1266,11 +1285,11 @@ function drawRouteLines(coords) {
   if (map._overlayLine) map.removeLayer(map._overlayLine);
   // เส้นใต้ (เงา)
   map._overlayLine = L.polyline(coords, {
-    color: '#005580', weight: 10, opacity: 0.4
+    color: '#064e3b', weight: 10, opacity: 0.25
   }).addTo(map);
   // เส้นหลัก
   osrmPolyline = L.polyline(coords, {
-    color: '#00d4ff', weight: 6, opacity: 1.0
+    color: '#059669', weight: 6, opacity: 1.0
   }).addTo(map);
 }
 
@@ -1985,7 +2004,7 @@ function highlightMatch(text, q) {
   if (!q) return text;
   const idx = text.toLowerCase().indexOf(q);
   if (idx < 0) return text;
-  return text.slice(0,idx) + `<mark style="background:var(--accent-gold);color:var(--bg-deep);border-radius:2px;">${text.slice(idx,idx+q.length)}</mark>` + text.slice(idx+q.length);
+  return text.slice(0,idx) + `<mark style="background:var(--accent-gold);color: var(--on-accent);border-radius:2px;">${text.slice(idx,idx+q.length)}</mark>` + text.slice(idx+q.length);
 }
 
 function showNewRouteModal() {
