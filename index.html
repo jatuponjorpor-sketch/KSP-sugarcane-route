@@ -92,35 +92,42 @@
   .map-btn:hover { background: var(--bg-panel); border-color: var(--accent-cyan); }
   .map-btn.active { background: var(--accent-blue); border-color: var(--accent-blue); color: #fff; }
 
+  /* แถบข้อมูลด้านล่าง — การ์ดเดียวแบบบาง ให้แผนที่มีพื้นที่มากที่สุด */
   #route-info-bar {
     position: absolute; bottom: 0; left: 0; right: 0; z-index: 400;
-    background: linear-gradient(transparent, var(--bg-deep)ee);
-    padding: 12px 16px 8px;
+    padding: 0 8px 6px; pointer-events: none;
   }
   #route-info-card {
-    background: var(--bg-card); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 12px 16px;
-    display: flex; align-items: center; justify-content: space-between;
+    pointer-events: auto; max-width: 560px;
+    background: color-mix(in srgb, var(--bg-card) 94%, transparent);
+    border: 1px solid var(--border); border-radius: 10px; padding: 5px 8px;
+    display: flex; flex-direction: column; gap: 4px;
+    box-shadow: 0 2px 10px #0008;
   }
-  .route-stat { text-align: center; }
-  .route-stat .val { font-family: 'Prompt', sans-serif; font-size: 20px; font-weight: 700; color: var(--accent-gold); }
+  #dir-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
+  #stat-row { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+  .route-stat { display: flex; align-items: baseline; gap: 3px; margin-right: 8px; white-space: nowrap; }
+  .route-stat .val { font-family: 'Prompt', sans-serif; font-size: 16px; font-weight: 700; color: var(--accent-gold); }
   .route-stat .lbl { font-size: 11px; color: var(--text-secondary); }
-  #dir-bar {
-    background: var(--bg-card); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 8px 10px; margin-bottom: 8px;
-    display: flex; align-items: center; gap: 8px;
+  #dir-text {
+    flex: 1; min-width: 0; font-size: 13px; color: var(--text-primary); font-weight: 600;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
-  #dir-text { flex: 1; min-width: 0; font-size: 13px; line-height: 1.35; color: var(--text-primary); }
-  #dir-text .dir-lbl { color: var(--text-secondary); font-size: 11px; }
-  #dir-text .dir-place { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+  #dir-text .dir-tag {
+    font-size: 10px; font-weight: 600; color: var(--bg-deep); background: var(--accent-cyan);
+    border-radius: 4px; padding: 1px 5px; margin-right: 4px; vertical-align: 1px;
+  }
+  #dir-text .dir-tag.back { background: var(--accent-gold); }
+  #dir-text .dir-arrow { color: var(--text-secondary); margin: 0 3px; }
   #btn-swap-dir {
     background: var(--accent-gold); color: var(--bg-deep); border: none;
-    border-radius: 8px; padding: 10px 12px; font-size: 14px; font-weight: 700;
+    border-radius: 6px; padding: 4px 9px; font-size: 13px; font-weight: 700;
     font-family: 'Sarabun', sans-serif; cursor: pointer; white-space: nowrap; flex-shrink: 0;
   }
   #sim-btn {
+    margin-left: auto;
     background: var(--accent-green); color: #fff; border: none;
-    border-radius: 8px; padding: 10px 18px; font-size: 14px;
+    border-radius: 6px; padding: 4px 10px; font-size: 13px;
     font-family: 'Sarabun', sans-serif; font-weight: 600;
     cursor: pointer; transition: all 0.2s;
   }
@@ -285,6 +292,9 @@
     background: var(--bg-card); border-top: 1px solid var(--border);
     display: flex; height: var(--nav-h); flex-shrink: 0;
   }
+  /* เมนูล่างบางลงเพื่อให้แผนที่มีพื้นที่มากขึ้น */
+  :root { --nav-h: 50px; }
+  .nav-item { gap: 1px; }
   .nav-item {
     flex: 1; display: flex; flex-direction: column; align-items: center;
     justify-content: center; gap: 3px; cursor: pointer;
@@ -293,7 +303,7 @@
   }
   .nav-item:hover { color: var(--text-secondary); }
   .nav-item.active { color: var(--accent-gold); }
-  .nav-icon { font-size: 22px; line-height: 1; }
+  .nav-icon { font-size: 19px; line-height: 1; }
   .nav-label { font-size: 10px; font-family: 'Sarabun', sans-serif; }
 
   /* ── ALERT POPUP ── */
@@ -416,35 +426,23 @@
       <div id="last-sync-badge" style="display:none;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:4px 10px;font-size:11px;color:var(--text-secondary);text-align:center;"></div>
     </div>
     <div id="route-info-bar">
-      <div id="dir-bar">
-        <div id="dir-text">-</div>
-        <button id="btn-swap-dir" onclick="swapDirection()">⇅ สลับ</button>
-      </div>
       <div id="route-info-card">
-        <div class="route-stat">
-          <div class="val" id="stat-route">-</div>
-          <div class="lbl">เส้นทาง</div>
+        <div id="dir-row">
+          <div id="dir-text">-</div>
+          <button id="btn-swap-dir" onclick="swapDirection()" title="สลับต้นทาง/ปลายทาง">⇅ สลับ</button>
         </div>
-        <div class="route-stat">
-          <div class="val" id="stat-dist">-</div>
-          <div class="lbl">กม.</div>
-        </div>
-        <div class="route-stat">
-          <div class="val" id="stat-cp">-</div>
-          <div class="lbl">จุดตรวจ</div>
-        </div>
-        <div class="route-stat">
-          <div class="val" id="stat-speed">0</div>
-          <div class="lbl">กม/ชม</div>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;">
-          <button id="sim-btn" onclick="toggleSimulation()">▶ จำลอง</button>
-          <div id="speed-btns" style="display:none;gap:4px;display:none;">
+        <div id="stat-row">
+          <div class="route-stat"><span class="val" id="stat-route">-</span></div>
+          <div class="route-stat"><span class="val" id="stat-dist">-</span><span class="lbl">กม.</span></div>
+          <div class="route-stat"><span class="val" id="stat-cp">-</span><span class="lbl">จุด</span></div>
+          <div class="route-stat"><span class="val" id="stat-speed">0</span><span class="lbl">กม/ชม</span></div>
+          <div id="speed-btns" style="display:none;gap:4px;">
             <button class="speed-btn active" onclick="setSimSpeed(1)" id="spd-1">1×</button>
             <button class="speed-btn" onclick="setSimSpeed(3)" id="spd-3">3×</button>
             <button class="speed-btn" onclick="setSimSpeed(5)" id="spd-5">5×</button>
             <button class="speed-btn" onclick="setSimSpeed(10)" id="spd-10">10×</button>
           </div>
+          <button id="sim-btn" onclick="toggleSimulation()">▶ จำลอง</button>
         </div>
       </div>
     </div>
@@ -1081,10 +1079,8 @@ function renderDirection() {
   const route = getSelectedRoute();
   if (!route) { el.textContent = '-'; return; }
   const { from, to } = routeEnds(route);
-  el.innerHTML = `<span class="dir-lbl">${routeReversed ? '🔁 ขากลับ' : '➡️ ขาไป'} · ต้นทาง</span>
-    <span class="dir-place">🟢 ${from}</span>
-    <span class="dir-lbl">ปลายทาง</span>
-    <span class="dir-place">🏁 ${to}</span>`;
+  el.innerHTML = `<span class="dir-tag${routeReversed ? ' back' : ''}">${routeReversed ? 'ขากลับ' : 'ขาไป'}</span>🟢 ${from}<span class="dir-arrow">→</span>🏁 ${to}`;
+  el.title = `ต้นทาง: ${from}\nปลายทาง: ${to}`;
 }
 
 function swapDirection() {
